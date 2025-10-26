@@ -63,12 +63,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appName = appDetails.title;
         storeName = "Apple App Store";
 
-        // Fetch reviews
-        reviews = await appStoreScraper.reviews({
-          id: appId,
-          page: 1,
-          country: 'us',
-        });
+        // Fetch reviews (paginate to get up to 500)
+        reviews = [];
+        let page = 1;
+        const maxReviews = 500;
+        const maxPages = 10; // App Store typically allows up to 10 pages
+
+        while (reviews.length < maxReviews && page <= maxPages) {
+          try {
+            const pageReviews = await appStoreScraper.reviews({
+              id: appId,
+              page,
+              country: 'us',
+            });
+            
+            if (!pageReviews || pageReviews.length === 0) {
+              break; // No more reviews available
+            }
+            
+            reviews.push(...pageReviews);
+            page++;
+          } catch (error) {
+            console.error(`Error fetching page ${page}:`, error);
+            break; // Stop on error
+          }
+        }
+
+        // Trim to max 500 reviews
+        reviews = reviews.slice(0, maxReviews);
       }
 
       if (!reviews || reviews.length === 0) {
@@ -81,7 +103,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const normalizedReviews = reviews.map((review) => ({
         text: review.text || review.comment || "",
         score: review.score || review.rating || 0,
-        date: review.date ? new Date(review.date) : undefined,
+        date: review.date ? new Date(review.date) : 
+              review.updated ? new Date(review.updated) : undefined,
       }));
 
       // Analyze reviews with OpenAI

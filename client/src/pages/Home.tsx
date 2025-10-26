@@ -1,12 +1,33 @@
 import { useState } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import type { AnalysisResult } from "@shared/schema";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import ErrorState from "@/components/ErrorState";
+import Analysis from "./Analysis";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+
+  const analysisMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const response = await apiRequest("POST", "/api/analyze", { url });
+      const data = await response.json();
+      return data as AnalysisResult;
+    },
+    onSuccess: (data) => {
+      setAnalysisResult(data);
+      setError("");
+    },
+    onError: (error: any) => {
+      setError(error.message || "Failed to analyze app reviews. Please try again.");
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +47,32 @@ export default function Home() {
       return;
     }
 
-    // Navigate to analysis page (will be implemented with actual API call)
-    console.log("Analyzing:", url);
-    // For prototype: would navigate to analysis page
+    analysisMutation.mutate(url);
   };
 
+  const handleBack = () => {
+    setAnalysisResult(null);
+    setUrl("");
+    setError("");
+    analysisMutation.reset();
+  };
+
+  // Show loading state
+  if (analysisMutation.isPending) {
+    return <LoadingSpinner />;
+  }
+
+  // Show error state
+  if (analysisMutation.isError && !analysisResult) {
+    return <ErrorState message={error} onRetry={handleBack} />;
+  }
+
+  // Show analysis results
+  if (analysisResult) {
+    return <Analysis data={analysisResult} onBack={handleBack} />;
+  }
+
+  // Show home page
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-2xl">
