@@ -1,0 +1,233 @@
+🧩 Goal
+
+Upgrade AppScan to include per-review sentiment analysis and monthly sentiment trends, while keeping the existing Node.js + React stack.
+
+AppScan currently summarizes app store reviews, extracts topic clusters, and shows rating trends.
+This version adds sentiment intelligence — so the app can show how user satisfaction changes over time (e.g., “Sentiment dropped from 80% positive in August to 65% in October”).
+
+🎯 Core Objectives
+
+Run sentiment analysis (Positive / Negative) for each review using OpenAI.
+
+Aggregate monthly positive/negative review counts.
+
+Compute average rating per month (already available).
+
+Visualize both rating trend and sentiment ratio trend.
+
+Generate a one-line insight summary (e.g., “User sentiment improved slightly since last month.”)
+
+⚙️ Constraints
+
+Keep using Node.js (Express) backend.
+
+Use existing OpenAI integration for sentiment classification.
+
+Reuse current review fetching and trend logic.
+
+No database or user accounts yet (single-session app).
+
+Limit to 500 most recent reviews per app.
+
+Stay within Replit fullstack environment (Node + React).
+
+🧱 Functional Requirements
+Backend (Express / Node.js)
+
+Endpoint: /analyze
+
+Accepts { url: "<app store link>" }
+
+Detects platform (Google Play / Apple App Store)
+
+Fetches latest 500 reviews (you already have this working)
+
+For each review, extract:
+
+date, rating, content
+
+Run sentiment analysis using OpenAI API:
+
+const sentimentPrompt = `Classify the following review as Positive or Negative:\n"${reviewText}"`;
+
+
+Store result as sentiment: "positive" or "negative".
+
+Group reviews by month:
+
+[
+  {
+    "month": "2025-08",
+    "avg_rating": 4.5,
+    "positive": 380,
+    "negative": 120
+  },
+  {
+    "month": "2025-09",
+    "avg_rating": 4.3,
+    "positive": 320,
+    "negative": 180
+  },
+  {
+    "month": "2025-10",
+    "avg_rating": 4.1,
+    "positive": 280,
+    "negative": 220
+  }
+]
+
+
+Return structured JSON for frontend visualization.
+
+Helper Modules
+
+sentimentAnalyzer.js → contains the OpenAI call and classification logic.
+
+trendAggregator.js → groups reviews by month and counts sentiment categories.
+
+Output Example
+
+{
+  "app_name": "Spotify",
+  "store": "Google Play",
+  "trend": [
+    { "month": "2025-08", "avg_rating": 4.5, "positive": 380, "negative": 120 },
+    { "month": "2025-09", "avg_rating": 4.3, "positive": 320, "negative": 180 },
+    { "month": "2025-10", "avg_rating": 4.1, "positive": 280, "negative": 220 }
+  ],
+  "summary": "User sentiment declined slightly since August (4.5⭐ → 4.1⭐)."
+}
+
+Frontend (React)
+
+Components to Add / Modify:
+
+TrendChart.jsx
+
+Line chart for average rating trend
+
+Stacked bar or area for positive vs negative sentiment
+
+Combine both on the same timeline (months on X-axis)
+
+SummaryCards.jsx
+
+Keep existing cards for avg rating and review count
+
+Add “% Positive Reviews” and “% Negative Reviews”
+
+InsightSummary.jsx
+
+Displays dynamic text summary returned from backend
+
+Charts
+
+Use Chart.js or Recharts
+
+X-axis → Month
+
+Y-axis → Count or Rating
+
+Two visuals:
+
+Line chart (average rating)
+
+Stacked bar (positive vs negative review count)
+
+Visual Hierarchy
+
+[ Summary Cards ]
+[ Trend Chart (rating + sentiment) ]
+[ Insight Summary ]
+[ Top Reviews Section (existing) ]
+
+🧰 Suggested Folder Structure
+appscan/
+├── backend/
+│   ├── index.js
+│   ├── sentimentAnalyzer.js
+│   ├── trendAggregator.js
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── InputBox.jsx
+│   │   │   ├── SummaryCards.jsx
+│   │   │   ├── TrendChart.jsx
+│   │   │   └── InsightSummary.jsx
+│   │   ├── App.jsx
+│   │   └── index.jsx
+│   ├── package.json
+│   └── tailwind.config.js
+└── README.md
+
+🔧 Step-by-Step Implementation Plan
+Step 1 — Backend: Sentiment Analysis
+
+Add sentimentAnalyzer.js:
+
+import OpenAI from "openai";
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+export async function getSentiment(reviewText) {
+  const prompt = `Classify the following review as Positive or Negative:\n"${reviewText}"`;
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+  });
+  const sentiment = response.choices[0].message.content.toLowerCase();
+  return sentiment.includes("positive") ? "positive" : "negative";
+}
+
+Step 2 — Backend: Monthly Aggregation
+
+In trendAggregator.js, group reviews:
+
+import dayjs from "dayjs";
+export function aggregateMonthly(reviews) {
+  const grouped = {};
+  reviews.forEach(r => {
+    const month = dayjs(r.date).format("YYYY-MM");
+    if (!grouped[month]) grouped[month] = { ratings: [], positive: 0, negative: 0 };
+    grouped[month].ratings.push(r.rating);
+    r.sentiment === "positive" ? grouped[month].positive++ : grouped[month].negative++;
+  });
+  return Object.keys(grouped).map(month => ({
+    month,
+    avg_rating: (grouped[month].ratings.reduce((a,b)=>a+b,0) / grouped[month].ratings.length).toFixed(1),
+    positive: grouped[month].positive,
+    negative: grouped[month].negative
+  }));
+}
+
+Step 3 — Frontend: Visualization
+
+Create TrendChart.jsx using mock data first.
+
+Add a second Y-axis or color-coded stacked bars for sentiment.
+
+Example summary:
+
+const summary = `User sentiment ${trendImproved ? "improved" : "declined"} from ${firstMonthRating}⭐ to ${lastMonthRating}⭐`;
+
+Step 4 — Integration & Testing
+
+Connect /analyze endpoint to frontend.
+
+Use real app URLs (Spotify, Duolingo, Threads) to validate sentiment output.
+
+Check for latency or API rate limits.
+
+✅ Deliverable
+
+A working AppScan v2 that:
+
+Fetches 500 reviews
+
+Classifies each as positive/negative
+
+Aggregates monthly sentiment + rating trends
+
+Visualizes changes over time
+
+Displays a one-line summary insight

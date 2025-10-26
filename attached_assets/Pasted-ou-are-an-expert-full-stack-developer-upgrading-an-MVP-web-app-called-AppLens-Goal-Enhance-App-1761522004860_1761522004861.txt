@@ -1,0 +1,194 @@
+ou are an expert full-stack developer upgrading an MVP web app called AppLens.
+
+🧩 Goal
+
+Enhance AppLens to include sentiment + trend analysis over time (month-by-month) based on the latest 500 reviews from either the Google Play Store or Apple App Store.
+
+🧭 Key Objectives for Version 2
+
+Accept a Google Play or App Store link as input.
+
+Fetch up to 500 recent reviews (with text, rating, and date).
+
+Perform sentiment analysis on each review (Positive / Negative).
+
+Group reviews by month to calculate:
+
+Average rating per month
+
+Positive vs. Negative review counts per month
+
+Display these as a trendline chart in the frontend.
+
+⚙️ MVP Constraints
+
+Single-session (no login or DB)
+
+Handle one app link per session
+
+500 reviews maximum
+
+Unified deployment in one Replit project
+
+Clean, minimal UI using Tailwind CSS
+
+Focus only on sentiment trend over time
+
+🧱 Functional Requirements
+Frontend (React)
+
+Input Component:
+
+Text input for App Store URL
+
+Button: “Analyze Reviews”
+
+Display loading spinner while fetching data
+
+Results Page:
+
+Three summary cards:
+
+Average Rating (latest month)
+
+% Positive Reviews
+
+% Negative Reviews
+
+TrendChart Component showing:
+
+Line chart for average rating over time
+
+Stacked bar or area for sentiment counts
+
+Short dynamic summary text:
+
+“User sentiment declined slightly from August (4.5⭐) to October (4.1⭐).”
+
+Visuals:
+
+Use Chart.js or Recharts
+
+Layout styled with Tailwind CSS
+
+Backend (Flask - Python)
+
+Endpoint /analyze
+
+Input: JSON { "url": "<app store link>" }
+
+Detect platform (google or apple)
+
+Fetch latest 500 reviews:
+
+Use google-play-scraper or custom scraping logic
+
+Use RSS feed or simple HTML parser for Apple App Store
+
+Extract:
+
+rating, date, and content per review
+
+Run sentiment analysis via:
+
+OpenAI API or VADER (fallback local sentiment analyzer)
+
+Group results by month:
+
+Compute average_rating, positive_count, negative_count
+
+Return JSON like:
+
+{
+  "app_name": "Spotify",
+  "store": "Google Play",
+  "trend": [
+    { "month": "2025-08", "avg_rating": 4.5, "positive": 380, "negative": 120 },
+    { "month": "2025-09", "avg_rating": 4.3, "positive": 320, "negative": 180 },
+    { "month": "2025-10", "avg_rating": 4.1, "positive": 280, "negative": 220 }
+  ]
+}
+
+📁 Suggested Folder Structure
+applens/
+├── backend/
+│   ├── app.py
+│   ├── review_fetcher.py
+│   ├── sentiment_analyzer.py
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── InputBox.jsx
+│   │   │   ├── SummaryCards.jsx
+│   │   │   └── TrendChart.jsx
+│   │   ├── App.jsx
+│   │   └── index.jsx
+│   ├── package.json
+│   └── tailwind.config.js
+└── README.md
+
+🔧 Step-by-Step Build Instructions
+🧠 Step 1 — Backend Setup
+
+Use Flask to handle /analyze
+
+Install dependencies:
+
+pip install flask google-play-scraper vaderSentiment openai
+
+
+Create functions:
+
+fetch_google_reviews(url) → returns list of {rating, date, content}
+
+analyze_sentiment(text) → returns positive / negative
+
+aggregate_by_month(reviews) → returns monthly stats JSON
+
+Return mock data first to test frontend.
+
+🧩 Step 2 — Frontend Setup
+
+Create TrendChart.jsx using Chart.js
+
+Fetch data from backend:
+
+fetch('/analyze', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({url: appUrl})
+})
+
+
+Display:
+
+Summary cards (avg rating, % positive, % negative)
+
+Line + stacked bar chart from returned data
+
+Short summary sentence
+
+🧩 Step 3 — Integration
+
+Connect input → backend → chart
+
+Use mock data for first visual
+
+Then test with real app links (Spotify, Duolingo, Threads)
+
+🧩 Step 4 — QA + Fine-Tuning
+
+Verify monthly grouping works for varying review volumes
+
+Handle edge cases (few reviews)
+
+Add loading and error UI states
+
+🧰 Tech Stack Summary
+Layer	Tool
+Frontend	React, Chart.js, Tailwind CSS
+Backend	Flask (Python)
+Scraping	google-play-scraper / RSS
+NLP	OpenAI API / VADER
+Hosting	Replit Fullstack environment
