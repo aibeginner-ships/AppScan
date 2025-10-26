@@ -1,0 +1,193 @@
+💻 Replit Vibe Coding Prompt
+
+You are an expert full-stack developer building an MVP web app called App Review Summarizer.
+
+🧩 Goal
+
+Build a simple web app that lets a user paste a Google Play or Apple App Store link and instantly view an AI-generated summary of user reviews, including sentiment trends, top feedback, and category insights.
+
+🎯 MVP Constraints
+
+No login/sign-up (single-session)
+
+Accept one app store link at a time
+
+Support both Google Play Store and Apple App Store links
+
+Fetch up to 500 latest reviews
+
+Analyze using OpenAI API for sentiment and topic extraction
+
+No database or persistence (keep results in memory)
+
+Clean, minimal UI with responsive layout
+
+🧭 UI Flow
+1️⃣ Home Page
+
+(as in your mockup)
+
+Header: “What does this app do?”
+
+Subtitle: “Summarize any app’s store reviews in seconds.”
+
+Input field: <Enter Google Play or Apple App Store URL>
+
+Submit button
+
+On submit → loading spinner → show analysis page
+
+2️⃣ Analysis Page (“Your app analysis”)
+
+Display these elements:
+
+Positive Review Categories (card)
+
+Negative Review Categories (card)
+
+Average Rating (card)
+
+Top Negative Reviews (table with 3–5 rows)
+
+Review Trend (line chart for ratings over time)
+
+Optional “Try another app” button
+
+🧱 Functional Requirements
+Frontend (React)
+
+Input box + submit button (HTML form)
+
+Loader component while analysis runs
+
+Display:
+
+Three info cards (positive, negative, average rating)
+
+List of top negative reviews (scrollable)
+
+Line chart for review trend (using Chart.js or Recharts)
+
+Error messages for invalid links or fetch failure
+
+Style using Tailwind CSS
+
+Backend (Python Flask)
+
+Endpoint /analyze
+
+Input: app store URL (string)
+
+Detect platform:
+
+If link includes “play.google.com”, use Google Play scraper
+
+If link includes “apps.apple.com”, use App Store API (RSS or scraping)
+
+Fetch last 500 reviews with rating and date
+
+Clean and preprocess text
+
+Run analysis via OpenAI API:
+
+Sentiment classification (positive/negative)
+
+Extract common topics (categories)
+
+Return structured JSON response like:
+
+{
+  "app_name": "Spotify",
+  "store": "Google Play",
+  "average_rating": 4.3,
+  "total_reviews": 500,
+  "positive_categories": ["UI", "Music Selection", "Offline Mode"],
+  "negative_categories": ["Performance", "Ads", "Login Issues"],
+  "top_negative_reviews": [
+    "App crashes after latest update",
+    "Too many ads in the free version",
+    "Playback stops randomly"
+  ],
+  "trend": [
+    {"month": "2025-06", "avg_rating": 4.5},
+    {"month": "2025-07", "avg_rating": 4.4},
+    {"month": "2025-08", "avg_rating": 4.2}
+  ]
+}
+
+🧰 Suggested Folder Structure
+app-review-summarizer/
+├── backend/
+│   ├── app.py
+│   ├── review_scraper.py
+│   ├── sentiment_analyzer.py
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── InputBox.jsx
+│   │   │   ├── SummaryCards.jsx
+│   │   │   ├── ReviewList.jsx
+│   │   │   └── TrendChart.jsx
+│   │   ├── App.jsx
+│   │   └── index.jsx
+│   ├── package.json
+│   └── tailwind.config.js
+└── README.md
+
+⚙️ Tech Stack
+Layer	Tool
+Frontend	React + Tailwind CSS + Chart.js
+Backend	Flask (Python)
+Data Extraction	Google Play Scraper, App Store RSS API
+AI Analysis	OpenAI API (GPT-4 / Embeddings)
+Hosting	Replit (single workspace, backend + frontend)
+🔧 Steps to Build
+
+Frontend
+
+Create InputBox.jsx → POST URL to /analyze
+
+Display loading spinner
+
+Render SummaryCards, ReviewList, and TrendChart using mock data first
+
+Backend
+
+Implement /analyze endpoint returning mock JSON
+
+Integrate Google Play & Apple App Store scrapers
+
+Add OpenAI-based sentiment and keyword clustering
+
+Integration
+
+Connect frontend form → backend API
+
+Display live data instead of mock JSON
+
+Testing
+
+Validate with 3 known apps (Spotify, Duolingo, Threads)
+
+Check loading, error handling, and sentiment accuracy
+
+🧩 Mock JSON (for initial frontend testing)
+{
+  "app_name": "Duolingo",
+  "store": "App Store",
+  "average_rating": 4.6,
+  "total_reviews": 500,
+  "positive_categories": ["Learning Experience", "Gamification", "UI"],
+  "negative_categories": ["Pricing", "Notifications"],
+  "top_negative_reviews": [
+    "The app nags me too much to subscribe",
+    "Lessons repeat too often",
+    "Sometimes progress resets"
+  ],
+  "trend": [
+    {"month": "2025-07", "avg_rating": 4.7},
+    {"month": "2025-08", "avg_rating": 4.6},
+    {"month": "2025-09", "avg_rating": 4.5}
+  ]
+}
