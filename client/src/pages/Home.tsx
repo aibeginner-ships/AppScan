@@ -37,10 +37,10 @@ export default function Home() {
         <div className="flex flex-col items-center gap-8 text-center">
           <div>
             <h1 className="text-5xl font-bold">
-              What does this app do?
+              AppScan
             </h1>
             <p className="mt-4 text-xl text-muted-foreground">
-              Summarize any app's store reviews in seconds.
+              Get instant clarity on what users love and hate about your app
             </p>
           </div>
 
