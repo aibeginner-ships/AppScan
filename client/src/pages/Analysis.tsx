@@ -1,0 +1,65 @@
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft } from "lucide-react";
+import SummaryCards from "@/components/SummaryCards";
+import ReviewList from "@/components/ReviewList";
+import TrendChart from "@/components/TrendChart";
+import type { AnalysisResult } from "@shared/schema";
+
+interface AnalysisProps {
+  data: AnalysisResult;
+  onBack: () => void;
+}
+
+export default function Analysis({ data, onBack }: AnalysisProps) {
+  return (
+    <div className="min-h-screen p-4 md:p-8">
+      <div className="mx-auto w-full max-w-7xl">
+        <div className="mb-12">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="mb-4"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back
+          </Button>
+          <h2 className="text-3xl font-semibold" data-testid="text-app-name">
+            Your app analysis
+          </h2>
+          <div className="mt-2 flex items-center gap-4">
+            <h3 className="text-xl text-muted-foreground">{data.appName}</h3>
+            <Badge variant="secondary" data-testid="badge-store">
+              {data.store}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <SummaryCards
+            positiveCategories={data.positiveCategories}
+            negativeCategories={data.negativeCategories}
+            averageRating={data.averageRating}
+            totalReviews={data.totalReviews}
+          />
+
+          <TrendChart data={data.trend} />
+
+          <ReviewList reviews={data.topNegativeReviews} />
+
+          <div className="flex justify-center pt-8">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              size="lg"
+              data-testid="button-try-another"
+            >
+              Try Another App
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
