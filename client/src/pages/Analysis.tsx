@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import SummaryCards from "@/components/SummaryCards";
 import ReviewList from "@/components/ReviewList";
 import TrendChart from "@/components/TrendChart";
+import InsightSummary from "@/components/InsightSummary";
 import type { AnalysisResult } from "@shared/schema";
 
 interface AnalysisProps {
@@ -42,7 +43,11 @@ export default function Analysis({ data, onBack }: AnalysisProps) {
             negativeCategories={data.negativeCategories}
             averageRating={data.averageRating}
             totalReviews={data.totalReviews}
+            positivePercentage={data.positivePercentage}
+            negativePercentage={data.negativePercentage}
           />
+
+          <InsightSummary summary={data.summary} />
 
           <TrendChart data={data.trend} />
 

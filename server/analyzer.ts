@@ -6,6 +6,10 @@ interface Review {
   date?: Date;
 }
 
+interface ReviewWithSentiment extends Review {
+  sentiment: "positive" | "negative" | "neutral";
+}
+
 interface AnalysisResult {
   appName: string;
   store: string;
@@ -14,7 +18,10 @@ interface AnalysisResult {
   positiveCategories: string[];
   negativeCategories: string[];
   topNegativeReviews: string[];
-  trend: Array<{ month: string; avgRating: number }>;
+  positivePercentage: number;
+  negativePercentage: number;
+  trend: Array<{ month: string; avgRating: number; positive: number; negative: number }>;
+  summary: string;
 }
 
 export async function analyzeReviews(
@@ -22,11 +29,23 @@ export async function analyzeReviews(
   appName: string,
   store: string
 ): Promise<AnalysisResult> {
+  // Classify sentiment for each review
+  const reviewsWithSentiment = classifySentiment(reviews);
+
   // Calculate average rating
   const averageRating = reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length;
 
-  // Calculate trend by grouping reviews by month
-  const trend = calculateTrend(reviews);
+  // Calculate sentiment percentages
+  const positiveCount = reviewsWithSentiment.filter(r => r.sentiment === "positive").length;
+  const negativeCount = reviewsWithSentiment.filter(r => r.sentiment === "negative").length;
+  const positivePercentage = Number(((positiveCount / reviews.length) * 100).toFixed(1));
+  const negativePercentage = Number(((negativeCount / reviews.length) * 100).toFixed(1));
+
+  // Calculate trend by grouping reviews by month (with sentiment counts)
+  const trend = calculateTrendWithSentiment(reviewsWithSentiment);
+
+  // Generate insight summary
+  const summary = generateInsightSummary(trend, appName);
 
   // Use OpenAI to categorize reviews
   const categories = await categorizeReviews(reviews);
@@ -46,35 +65,115 @@ export async function analyzeReviews(
     positiveCategories: categories.positive,
     negativeCategories: categories.negative,
     topNegativeReviews,
+    positivePercentage,
+    negativePercentage,
     trend,
+    summary,
   };
 }
 
-function calculateTrend(reviews: Review[]): Array<{ month: string; avgRating: number }> {
+function classifySentiment(reviews: Review[]): ReviewWithSentiment[] {
+  // Classify sentiment based on review score
+  // This is fast and accurate since the score itself is a strong sentiment indicator
+  return reviews.map(review => ({
+    ...review,
+    sentiment: review.score >= 4 ? "positive" : 
+               review.score <= 2 ? "negative" : 
+               "neutral"
+  }));
+}
+
+function calculateTrendWithSentiment(
+  reviews: ReviewWithSentiment[]
+): Array<{ month: string; avgRating: number; positive: number; negative: number }> {
   // Group reviews by month
-  const monthlyRatings = new Map<string, number[]>();
+  const monthlyData = new Map<string, {
+    ratings: number[];
+    positive: number;
+    negative: number;
+  }>();
   
   reviews.forEach((review) => {
     if (review.date) {
       const date = new Date(review.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      if (!monthlyRatings.has(monthKey)) {
-        monthlyRatings.set(monthKey, []);
+      
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, { ratings: [], positive: 0, negative: 0 });
       }
-      monthlyRatings.get(monthKey)!.push(review.score);
+      
+      const data = monthlyData.get(monthKey)!;
+      data.ratings.push(review.score);
+      
+      if (review.sentiment === "positive") {
+        data.positive++;
+      } else if (review.sentiment === "negative") {
+        data.negative++;
+      }
     }
   });
 
-  // Calculate average for each month and sort
-  const trend = Array.from(monthlyRatings.entries())
-    .map(([month, ratings]) => ({
+  // Calculate average and sentiment counts for each month and sort
+  const trend = Array.from(monthlyData.entries())
+    .map(([month, data]) => ({
       month,
-      avgRating: Number((ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)),
+      avgRating: Number((data.ratings.reduce((sum, r) => sum + r, 0) / data.ratings.length).toFixed(1)),
+      positive: data.positive,
+      negative: data.negative,
     }))
     .sort((a, b) => a.month.localeCompare(b.month))
     .slice(-6); // Last 6 months
 
   return trend;
+}
+
+function generateInsightSummary(
+  trend: Array<{ month: string; avgRating: number; positive: number; negative: number }>,
+  appName: string
+): string {
+  if (trend.length === 0) {
+    return `Insufficient data to analyze sentiment trends for ${appName}.`;
+  }
+
+  if (trend.length === 1) {
+    const { avgRating, positive, negative } = trend[0];
+    const total = positive + negative;
+    const positivePercent = total > 0 ? Math.round((positive / total) * 100) : 0;
+    return `${appName} has an average rating of ${avgRating}⭐ with ${positivePercent}% positive reviews.`;
+  }
+
+  // Compare first and last month
+  const firstMonth = trend[0];
+  const lastMonth = trend[trend.length - 1];
+  
+  const ratingChange = lastMonth.avgRating - firstMonth.avgRating;
+  const firstTotal = firstMonth.positive + firstMonth.negative;
+  const lastTotal = lastMonth.positive + lastMonth.negative;
+  
+  const firstPositivePercent = firstTotal > 0 ? Math.round((firstMonth.positive / firstTotal) * 100) : 0;
+  const lastPositivePercent = lastTotal > 0 ? Math.round((lastMonth.positive / lastTotal) * 100) : 0;
+  const sentimentChange = lastPositivePercent - firstPositivePercent;
+
+  // Format month names
+  const formatMonth = (monthStr: string) => {
+    const [year, month] = monthStr.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1);
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  if (Math.abs(ratingChange) < 0.1 && Math.abs(sentimentChange) < 5) {
+    return `User sentiment for ${appName} has remained stable at ${lastMonth.avgRating}⭐ with ${lastPositivePercent}% positive reviews.`;
+  }
+
+  if (ratingChange > 0.2 || sentimentChange > 5) {
+    return `User sentiment for ${appName} improved from ${formatMonth(firstMonth.month)} (${firstMonth.avgRating}⭐, ${firstPositivePercent}% positive) to ${formatMonth(lastMonth.month)} (${lastMonth.avgRating}⭐, ${lastPositivePercent}% positive).`;
+  }
+
+  if (ratingChange < -0.2 || sentimentChange < -5) {
+    return `User sentiment for ${appName} declined from ${formatMonth(firstMonth.month)} (${firstMonth.avgRating}⭐, ${firstPositivePercent}% positive) to ${formatMonth(lastMonth.month)} (${lastMonth.avgRating}⭐, ${lastPositivePercent}% positive).`;
+  }
+
+  return `${appName} maintains an average rating of ${lastMonth.avgRating}⭐ with ${lastPositivePercent}% positive reviews.`;
 }
 
 async function categorizeReviews(

@@ -9,10 +9,15 @@ export const analysisResultSchema = z.object({
   positiveCategories: z.array(z.string()),
   negativeCategories: z.array(z.string()),
   topNegativeReviews: z.array(z.string()),
+  positivePercentage: z.number(),
+  negativePercentage: z.number(),
   trend: z.array(z.object({
     month: z.string(),
     avgRating: z.number(),
+    positive: z.number(),
+    negative: z.number(),
   })),
+  summary: z.string(),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
