@@ -1,0 +1,87 @@
+🎯 Objective: Identify why the Insight Layer is not rendering after the v3.2 visual refresh. Do not modify existing functionality yet — just inspect and report findings.
+
+🧩 Prompt for the Replit Agent
+
+“Please run a diagnostic check to find out why the Insight Layer is not appearing in the UI after the v3.2 visual refresh.
+Focus on whether this is a frontend rendering issue or a backend data issue.
+Don’t change or rollback anything yet — only investigate and summarize findings.”
+
+1️⃣ Backend Check — Data Flow
+
+Inspect:
+
+Verify if the /analyze endpoint is still returning the insights array in the response JSON.
+
+Check console logs or API response output for { insights: [...] }.
+
+Confirm it contains at least 3–5 entries (title, summary, quote, metrics).
+
+If empty or missing:
+→ Flag as backend regression (possibly broken serialization or field rename).
+
+If data present:
+→ Move to UI rendering check.
+
+2️⃣ Frontend Check — Rendering Path
+
+Inspect:
+
+In AnalysisResults.tsx or InsightsGrid.tsx (whichever renders insights), confirm:
+
+Component is still mounted and mapped to data.insights.
+
+The render loop exists:
+
+{data.insights?.map((insight) => (
+  <InsightCard key={insight.title} {...insight} />
+))}
+
+
+No extra conditional filters like if (insights.length > 3) that might hide small datasets.
+
+Common causes to check:
+
+The insight card container may have display:none or incorrect CSS grid classes (hidden, opacity-0, or missing flex/grid parent).
+
+Over-aggressive conditional rendering (e.g., new fade-in logic depending on loading state).
+
+Parent component renamed or refactored (the UI refresh might have changed import path).
+
+3️⃣ Quote Conditional Logic Check
+
+Since quotes are now conditionally displayed (similarity > 0.5 and length > 20):
+
+Confirm that insight.quote still passes this condition.
+
+If most clusters don’t have qualifying quotes, the card might render blank.
+
+Temporary test: Log which insights pass the quote filter.
+
+console.log(insights.filter(i => i.representative_quote?.length > 20));
+
+
+If it returns an empty list → condition too strict → relax temporarily for debug.
+
+4️⃣ UI Visibility Check
+
+Inspect DOM after analysis completes:
+
+Check if the Insight container (.insight-grid or .insight-section) exists but has zero height or opacity.
+
+If hidden → caused by animation or Tailwind class mismatch (e.g., animate-fadeIn + opacity-0 not toggled off).
+
+5️⃣ Diagnostic Output
+
+Ask the agent to summarize findings clearly:
+
+✅ Is /analyze returning insights?
+
+⚙️ Is the front-end mapping function running?
+
+⚠️ Are cards hidden due to CSS or conditional rendering?
+
+🧩 Root cause (backend, data binding, or UI layer)?
+
+🧭 One-Line Diagnostic Instruction
+
+“Run a full trace to determine why the Insight Layer is missing in AppScan v3.2 — verify if insights are returned from backend and rendered in the front-end component. Do not modify or rollback yet; report detailed cause and which component is blocking render.”
