@@ -20,6 +20,102 @@ export interface RefinedInsight {
 }
 
 /**
+ * Calculate text similarity using Jaccard index (intersection over union)
+ * Returns a value between 0 (no similarity) and 1 (identical)
+ */
+function textSimilarity(text1: string, text2: string): number {
+  // Tokenize and normalize
+  const tokens1 = new Set(
+    text1
+      .toLowerCase()
+      .split(/\W+/)
+      .filter(t => t.length > 2) // Filter out very short tokens
+  );
+  const tokens2 = new Set(
+    text2
+      .toLowerCase()
+      .split(/\W+/)
+      .filter(t => t.length > 2)
+  );
+
+  if (tokens1.size === 0 || tokens2.size === 0) {
+    return 0;
+  }
+
+  // Calculate intersection
+  const intersection = Array.from(tokens1).filter(token => tokens2.has(token));
+  
+  // Calculate union
+  const union = new Set([...Array.from(tokens1), ...Array.from(tokens2)]);
+
+  // Return Jaccard similarity
+  return intersection.length / union.size;
+}
+
+/**
+ * Select the most representative quote from reviews using text similarity
+ */
+function selectRepresentativeQuote(
+  reviews: string[],
+  clusterSummary: string
+): string {
+  if (reviews.length === 0) {
+    return '';
+  }
+
+  if (reviews.length === 1) {
+    return reviews[0];
+  }
+
+  // Find the review with highest similarity to the cluster summary
+  let bestQuote = reviews[0];
+  let bestScore = 0;
+
+  for (const review of reviews) {
+    const score = textSimilarity(review, clusterSummary);
+    if (score > bestScore) {
+      bestScore = score;
+      bestQuote = review;
+    }
+  }
+
+  return bestQuote;
+}
+
+/**
+ * Extract top keywords from reviews
+ */
+function extractTopKeywords(reviews: string[], count: number = 3): string[] {
+  const issueKeywords = [
+    'crash', 'freeze', 'bug', 'error', 'broken', 'fail',
+    'slow', 'lag', 'performance', 'loading',
+    'login', 'account', 'password', 'sign',
+    'price', 'cost', 'expensive', 'subscription',
+    'feature', 'missing', 'need', 'add',
+    'ui', 'design', 'interface', 'confusing',
+    'support', 'help', 'customer', 'service',
+    'ads', 'advertisement', 'spam',
+    'update', 'version', 'change',
+    'quality', 'bad', 'terrible', 'awful'
+  ];
+
+  const keywordCounts: Record<string, number> = {};
+  const text = reviews.join(' ').toLowerCase();
+
+  issueKeywords.forEach(keyword => {
+    const matches = text.match(new RegExp(`\\b${keyword}\\b`, 'g'));
+    if (matches) {
+      keywordCounts[keyword] = matches.length;
+    }
+  });
+
+  return Object.entries(keywordCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, count)
+    .map(([word]) => word);
+}
+
+/**
  * Generate a single insight from a cluster of reviews
  */
 async function generateInsightForCluster(
@@ -39,32 +135,41 @@ async function generateInsightForCluster(
   // Take up to 20 reviews for analysis
   const sampleReviews = clusterReviews.slice(0, 20).map(r => r.text);
 
-  const prompt = `You are a product analyst analyzing user feedback.
+  // Extract top keywords to provide context
+  const topKeywords = extractTopKeywords(sampleReviews, 3);
+  const keywordContext = topKeywords.length > 0 
+    ? `Top keywords: "${topKeywords.join('", "')}"`
+    : '';
+
+  const prompt = `You are a product manager analyzing app reviews.
+
+${keywordContext}
 
 Here are ${mentions} user reviews that discuss a similar theme:
 
 ${sampleReviews.map((text, i) => `${i + 1}. "${text}"`).join('\n')}
 
 Analyze these reviews and provide:
-1. A concise, descriptive title (2-4 words) that captures the main issue or theme
+1. A concise, descriptive title (2-4 words) that captures the specific issue or theme
 2. A 1-2 sentence explanation of why this matters to the product
-3. One specific, actionable recommendation
-4. Select the most representative quote from the list above (copy it exactly, including quote marks)
+3. One SHORT, SPECIFIC, actionable improvement suggestion (max 15 words)
 
 Requirements:
-- Title should be specific and descriptive (e.g., "Login Crashes", "Slow Search Results", "Missing Features")
+- Title should be specific and descriptive (e.g., "Login Crashes", "Slow Search Results", "Missing Filters")
 - Avoid generic titles like "Performance Issues" or "User Experience Problems"
+- Suggested action must be concrete and specific (e.g., "Fix login crash in version 5.3 for Android 13 users")
 - Focus on what users are actually saying, not assumptions
 - Be direct and actionable
-- The representative_quote must be one of the exact reviews from the list above
 
 Return JSON in this exact format:
 {
   "title": "Brief Descriptive Title",
   "why_it_matters": "Why this issue matters",
-  "suggested_action": "Specific action to take",
-  "representative_quote": "Exact quote from the list above"
-}`;
+  "suggested_action": "Specific action to take (max 15 words)"
+}
+
+Example good suggested_action: "Fix login freeze affecting iOS 16+ users after v5.2 update"
+Example bad suggested_action: "Investigate and address user concerns about login"`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -72,7 +177,7 @@ Return JSON in this exact format:
       messages: [
         {
           role: 'system',
-          content: 'You are a product analyst creating actionable insights from user feedback.',
+          content: 'You are a product manager creating actionable insights from user feedback. Be specific and concrete.',
         },
         { role: 'user', content: prompt },
       ],
@@ -83,18 +188,34 @@ Return JSON in this exact format:
     const content = completion.choices[0].message.content || '{}';
     const result = JSON.parse(content);
 
-    // Find the representative quote from the samples
-    // If OpenAI didn't return it properly, pick the first one
-    let representative_quote = result.representative_quote || sampleReviews[0];
-
-    // Clean up the quote (remove surrounding quotes if present)
-    representative_quote = representative_quote.replace(/^["']|["']$/g, '');
-
-    // If the quote is not in the sample, use the first review
-    const quoteExists = sampleReviews.some(r => r.includes(representative_quote) || representative_quote.includes(r.slice(0, 30)));
-    if (!quoteExists) {
-      representative_quote = sampleReviews[0];
+    // If OpenAI returned empty/generic title, generate one from the reviews
+    let title = result.title;
+    if (!title || title === 'User Feedback Theme' || title.length < 3) {
+      // Extract key words from reviews to create a title
+      title = generateTitleFromReviews(sampleReviews.slice(0, 5));
     }
+
+    // Check if OpenAI returned a meaningful suggested_action
+    let suggested_action = result.suggested_action || '';
+    
+    // Detect generic/empty actions
+    const isGenericAction = 
+      !suggested_action ||
+      suggested_action.length < 10 ||
+      suggested_action.toLowerCase().includes('investigate') ||
+      suggested_action.toLowerCase().includes('address user concerns') ||
+      suggested_action.toLowerCase().includes('improve') && suggested_action.length < 25;
+
+    if (isGenericAction) {
+      // Generate specific action based on title and top keywords
+      const keywords = extractTopKeywords(sampleReviews, 2);
+      suggested_action = generateSpecificAction(title, keywords);
+    }
+
+    // Use text similarity to select the most representative quote
+    // Combine title and why_it_matters to create a summary for comparison
+    const clusterSummary = `${title}. ${result.why_it_matters || ''}`;
+    const representative_quote = selectRepresentativeQuote(sampleReviews, clusterSummary);
 
     // Determine impact and confidence based on metrics
     let impact: 'High' | 'Medium' | 'Low' = 'Low';
@@ -109,19 +230,6 @@ Return JSON in this exact format:
       confidence = 'High';
     } else if (mentions >= 15) {
       confidence = 'Medium';
-    }
-
-    // If OpenAI returned empty/generic title, generate one from the reviews
-    let title = result.title;
-    if (!title || title === 'User Feedback Theme' || title.length < 3) {
-      // Extract key words from reviews to create a title
-      title = generateTitleFromReviews(sampleReviews.slice(0, 5));
-    }
-
-    // If OpenAI returned empty action, generate one
-    let suggested_action = result.suggested_action;
-    if (!suggested_action || suggested_action === 'Investigate and address user concerns') {
-      suggested_action = `Prioritize fixing issues related to ${title.toLowerCase()}`;
     }
 
     return {
@@ -141,6 +249,57 @@ Return JSON in this exact format:
     console.error('[INSIGHT REFINER] Error generating insight for cluster:', error);
     return null;
   }
+}
+
+/**
+ * Generate a specific, actionable suggestion based on title and keywords
+ */
+function generateSpecificAction(title: string, keywords: string[]): string {
+  const titleLower = title.toLowerCase();
+  
+  // Map common issues to specific actions
+  if (titleLower.includes('crash') || titleLower.includes('freeze') || titleLower.includes('bug')) {
+    return `Fix crash/freeze bugs affecting users in latest version`;
+  }
+  
+  if (titleLower.includes('slow') || titleLower.includes('performance') || titleLower.includes('lag')) {
+    return `Optimize performance and reduce loading times for better UX`;
+  }
+  
+  if (titleLower.includes('login') || titleLower.includes('account') || titleLower.includes('password')) {
+    return `Improve login flow and fix authentication issues`;
+  }
+  
+  if (titleLower.includes('ad') && (titleLower.includes('complaint') || titleLower.includes('spam'))) {
+    return `Reduce ad frequency and improve ad placement for free users`;
+  }
+  
+  if (titleLower.includes('price') || titleLower.includes('cost') || titleLower.includes('subscription')) {
+    return `Review pricing structure and communicate value more clearly`;
+  }
+  
+  if (titleLower.includes('feature') || titleLower.includes('missing')) {
+    return `Prioritize adding most-requested features from user feedback`;
+  }
+  
+  if (titleLower.includes('ui') || titleLower.includes('design') || titleLower.includes('interface')) {
+    return `Simplify UI/UX and improve navigation based on user feedback`;
+  }
+  
+  if (titleLower.includes('support') || titleLower.includes('help') || titleLower.includes('customer')) {
+    return `Improve customer support response time and quality`;
+  }
+  
+  if (titleLower.includes('update') && keywords.includes('change')) {
+    return `Restore user-friendly features removed in recent updates`;
+  }
+  
+  // Generic fallback with keywords
+  if (keywords.length > 0) {
+    return `Address ${keywords[0]}-related issues mentioned by users`;
+  }
+  
+  return `Fix reported issues with ${titleLower}`;
 }
 
 /**
@@ -244,9 +403,11 @@ export async function refineInsights(
   // Filter out null results
   const validInsights = insights.filter((i): i is RefinedInsight => i !== null);
 
-  // Ensure title uniqueness
+  // Ensure title and action uniqueness
   const usedTitles = new Set<string>();
-  validInsights.forEach((insight, index) => {
+  const usedActions = new Set<string>();
+  
+  validInsights.forEach((insight) => {
     let title = insight.title;
     let counter = 1;
     
@@ -266,10 +427,18 @@ export async function refineInsights(
     usedTitles.add(title);
     insight.title = title;
     
-    // Also ensure suggested_action is unique
-    if (!insight.suggested_action.includes(title)) {
-      insight.suggested_action = `Prioritize fixing issues related to ${title.toLowerCase()}`;
+    // Ensure suggested_action is unique (append variant if duplicate)
+    let action = insight.suggested_action;
+    let actionCounter = 1;
+    
+    while (usedActions.has(action)) {
+      actionCounter++;
+      // Add a slight variation to make it unique
+      action = `${insight.suggested_action} (priority ${actionCounter})`;
     }
+    
+    usedActions.add(action);
+    insight.suggested_action = action;
   });
 
   // Sort by impact -> confidence -> mentions

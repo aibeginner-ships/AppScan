@@ -193,6 +193,103 @@ function keywordBasedClustering(
 }
 
 /**
+ * Refine clusters by splitting those with mixed topics
+ * Prevents issues like "UI design" + "pricing" in the same cluster
+ */
+function refineClusters(clusteredReviews: ReviewWithEmbedding[]): ReviewWithEmbedding[] {
+  const keywordThemes = [
+    { name: 'crash', keywords: ['crash', 'freeze', 'bug', 'error', 'broken'] },
+    { name: 'slow', keywords: ['slow', 'lag', 'performance', 'loading'] },
+    { name: 'price', keywords: ['price', 'cost', 'expensive', 'subscription', 'payment'] },
+    { name: 'ads', keywords: ['ad', 'advertisement', 'spam', 'popup'] },
+    { name: 'design', keywords: ['ui', 'design', 'interface', 'layout', 'confusing'] },
+    { name: 'login', keywords: ['login', 'account', 'password', 'sign', 'authentication'] },
+    { name: 'feature', keywords: ['feature', 'missing', 'need', 'add'] },
+    { name: 'support', keywords: ['support', 'help', 'customer', 'service'] },
+  ];
+
+  // Group reviews by current cluster
+  const clusterMap: Record<number, ReviewWithEmbedding[]> = {};
+  clusteredReviews.forEach(review => {
+    const clusterId = review.clusterId!;
+    if (!clusterMap[clusterId]) {
+      clusterMap[clusterId] = [];
+    }
+    clusterMap[clusterId].push(review);
+  });
+
+  const refinedReviews: ReviewWithEmbedding[] = [];
+  let nextClusterId = 0;
+
+  // Process each cluster
+  for (const clusterReviews of Object.values(clusterMap)) {
+    // Skip small clusters (no need to refine)
+    if (clusterReviews.length < 10) {
+      clusterReviews.forEach(review => {
+        refinedReviews.push({ ...review, clusterId: nextClusterId });
+      });
+      nextClusterId++;
+      continue;
+    }
+
+    // Group reviews within this cluster by keyword theme
+    const subclusters: Record<string, ReviewWithEmbedding[]> = {};
+
+    for (const review of clusterReviews) {
+      const text = review.text.toLowerCase();
+      let bestTheme = 'other';
+      let maxMatches = 0;
+
+      // Find dominant keyword theme for this review
+      for (const theme of keywordThemes) {
+        const matches = theme.keywords.filter(kw => text.includes(kw)).length;
+        if (matches > maxMatches) {
+          maxMatches = matches;
+          bestTheme = theme.name;
+        }
+      }
+
+      // Group by theme
+      if (!subclusters[bestTheme]) {
+        subclusters[bestTheme] = [];
+      }
+      subclusters[bestTheme].push(review);
+    }
+
+    // Only split if we have meaningful subclusters (at least 5 reviews each)
+    const validSubclusters = Object.entries(subclusters).filter(
+      ([_, reviews]) => reviews.length >= 5
+    );
+
+    if (validSubclusters.length > 1) {
+      // Split into multiple refined clusters
+      validSubclusters.forEach(([_, subReviews]) => {
+        subReviews.forEach(review => {
+          refinedReviews.push({ ...review, clusterId: nextClusterId });
+        });
+        nextClusterId++;
+      });
+    } else {
+      // Keep as single cluster
+      clusterReviews.forEach(review => {
+        refinedReviews.push({ ...review, clusterId: nextClusterId });
+      });
+      nextClusterId++;
+    }
+  }
+
+  // Log refinement results
+  const finalClusterSizes: Record<number, number> = {};
+  refinedReviews.forEach(r => {
+    finalClusterSizes[r.clusterId!] = (finalClusterSizes[r.clusterId!] || 0) + 1;
+  });
+
+  console.log('[SEMANTIC CLUSTERER] After refinement, cluster sizes:', finalClusterSizes);
+
+  return refinedReviews;
+}
+
+/**
  * Cluster only negative reviews for insight generation
  */
 export async function clusterNegativeReviews(
@@ -204,5 +301,10 @@ export async function clusterNegativeReviews(
     return [];
   }
 
-  return clusterReviews(negativeReviews);
+  const clusteredReviews = await clusterReviews(negativeReviews);
+  
+  // Apply cluster refinement to separate mixed topics
+  const refinedReviews = refineClusters(clusteredReviews);
+
+  return refinedReviews;
 }
