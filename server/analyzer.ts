@@ -63,12 +63,18 @@ export async function analyzeReviews(
     .map((r) => r.text);
 
   // Generate actionable insights
+  console.log('[ANALYZER] Generating insights for', appName);
   const insightResults = await generateInsights(
     reviewsWithSentiment,
     categories.positive,
     categories.negative,
     appName
   );
+  console.log('[ANALYZER] Insight results:', {
+    insightsCount: insightResults.insights.length,
+    loveCount: insightResults.whatUsersLove.length,
+    hateCount: insightResults.whatUsersHate.length,
+  });
 
   return {
     appName,

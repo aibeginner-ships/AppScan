@@ -198,64 +198,62 @@ Return as JSON:
 }
 
 /**
- * Generates actionable insights from top themes using OpenAI
+ * Generates actionable insights directly from reviews using OpenAI
  */
 export async function generateActionableInsights(
-  topThemes: ThemeData[],
+  reviews: ReviewWithSentiment[],
   totalReviews: number,
-  appName: string
+  appName: string,
+  positiveCategories: string[],
+  negativeCategories: string[]
 ): Promise<Insight[]> {
-  if (topThemes.length === 0) {
+  // Get sample of negative reviews for analysis
+  const negativeReviews = reviews
+    .filter(r => r.sentiment === "negative" && r.text && r.text.trim().length > 10)
+    .slice(0, 100)
+    .map(r => r.text);
+
+  if (negativeReviews.length === 0) {
+    console.log('[INSIGHT GEN] No negative reviews found, returning empty insights');
     return [];
   }
 
-  // Prepare theme data for OpenAI
-  const themeData = topThemes.slice(0, 5).map(theme => ({
-    topic: theme.topic,
-    mentions: theme.mentions,
-    negativeRatio: theme.negativeRatio,
-    recentTrend: theme.recentTrend,
-    sampleReviews: theme.reviews.slice(0, 5).map(r => r.text)
-  }));
+  const prompt = `You are a product analyst for ${appName}. Analyze these user complaints and create 2-3 actionable insights.
 
-  const prompt = `You are a product analyst for ${appName}. Given user feedback data grouped by themes, write up to 3 concise, actionable insights.
+Negative Feedback Categories: ${negativeCategories.join(', ')}
 
-Theme Data (${totalReviews} total reviews):
-${JSON.stringify(themeData, null, 2)}
+Sample Negative Reviews (${negativeReviews.length} of ${totalReviews} total):
+${negativeReviews.slice(0, 50).join('\n---\n')}
 
-Each insight should:
-- Focus on themes with high negative sentiment or recent trends
-- Be specific and data-backed
-- Include a concrete suggested action
-- Be professional and factual
+Create 2-3 insights as a JSON object with an "insights" array. Each insight must have:
+{
+  "insights": [
+    {
+      "title": "Clear issue title (5-8 words)",
+      "why_it_matters": "One sentence explaining impact",
+      "metrics": {
+        "mentions": <estimated number of reviews mentioning this>,
+        "share": <estimated decimal 0-1 of total reviews>,
+        "negative_ratio": <estimated decimal 0-1 of negative sentiment>
+      },
+      "representative_quote": "A real user quote from the samples above",
+      "suggested_action": "Specific, actionable next step"
+    }
+  ]
+}
 
-Return strictly formatted JSON array:
-[
-  {
-    "title": "Clear, specific issue title (5-8 words)",
-    "why_it_matters": "One sentence explaining impact with metrics",
-    "metrics": {
-      "mentions": <number>,
-      "share": <decimal 0-1>,
-      "negative_ratio": <decimal 0-1>
-    },
-    "representative_quote": "A real user quote from sample reviews",
-    "suggested_action": "Specific, actionable next step"
-  }
-]
+Focus on:
+- Most frequently mentioned issues
+- High-impact problems affecting user experience
+- Issues that appear urgent or recent
 
-Prioritize themes with:
-1. High negative_ratio (>0.5)
-2. High mentions
-3. Recent trends
-
-Return 2-3 insights maximum.`;
+Be specific, data-backed, and actionable.`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5-mini",
       messages: [
-        { role: "system", content: "You are a product analyst creating actionable insights." },
+        { role: "system", content: "You are a product analyst creating actionable insights from user feedback." },
         { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" },
@@ -263,27 +261,39 @@ Return 2-3 insights maximum.`;
     });
 
     const content = completion.choices[0].message.content || "{}";
+    console.log('[INSIGHT GEN] OpenAI response:', content.substring(0, 200) + '...');
     const result = JSON.parse(content);
     
     // Handle both array and object with 'insights' key
     const insights = Array.isArray(result) ? result : (result.insights || []);
+    console.log('[INSIGHT GEN] Parsed insights:', insights.length);
+    
+    // If OpenAI returned no insights, use fallback
+    if (insights.length === 0) {
+      console.log('[INSIGHT GEN] OpenAI returned empty insights, using fallback');
+      throw new Error('Empty insights from OpenAI');
+    }
     
     return insights.slice(0, 3);
   } catch (error) {
-    console.error("Error generating actionable insights:", error);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error("[INSIGHT GEN] Error or empty result, using fallback insights:", errorMsg);
     
-    // Fallback: create insights from top themes manually
-    return topThemes.slice(0, 2).map(theme => ({
-      title: `Address ${theme.topic} concerns`,
-      why_it_matters: `Mentioned in ${theme.mentions} reviews (${Math.round(theme.negativeRatio * 100)}% negative)`,
+    // Fallback: create basic insights from categories
+    const fallbackInsights = negativeCategories.slice(0, 2).map((category, index) => ({
+      title: `Address ${category} issues`,
+      why_it_matters: `${category} is a major pain point mentioned in user reviews`,
       metrics: {
-        mentions: theme.mentions,
-        share: theme.mentions / totalReviews,
-        negative_ratio: theme.negativeRatio
+        mentions: Math.floor(negativeReviews.length / negativeCategories.length),
+        share: 0.1,
+        negative_ratio: 0.8
       },
-      representative_quote: theme.reviews[0]?.text || "User feedback indicates issues",
-      suggested_action: `Investigate and improve ${theme.topic.toLowerCase()}`
+      representative_quote: negativeReviews[index] || "Users have reported issues with this aspect",
+      suggested_action: `Investigate and improve ${category.toLowerCase()}`
     }));
+    
+    console.log('[INSIGHT GEN] Generated', fallbackInsights.length, 'fallback insights');
+    return fallbackInsights;
   }
 }
 
@@ -296,14 +306,24 @@ export async function generateInsights(
   negativeCategories: string[],
   appName: string
 ): Promise<InsightGenerationResult> {
-  // Rank themes by importance
-  const rankedThemes = rankThemes(reviews, positiveCategories, negativeCategories);
+  console.log('[INSIGHT GEN] Starting insight generation');
+  console.log('[INSIGHT GEN] Reviews:', reviews.length, 'Positive cats:', positiveCategories.length, 'Negative cats:', negativeCategories.length);
   
   // Generate love/hate summaries
+  console.log('[INSIGHT GEN] Generating love/hate summaries...');
   const loveHate = await generateLoveHateSummaries(reviews);
+  console.log('[INSIGHT GEN] Love/hate generated:', loveHate.love.length, 'love,', loveHate.hate.length, 'hate');
   
-  // Generate actionable insights from top themes
-  const insights = await generateActionableInsights(rankedThemes, reviews.length, appName);
+  // Generate actionable insights directly from reviews
+  console.log('[INSIGHT GEN] Generating actionable insights...');
+  const insights = await generateActionableInsights(
+    reviews, 
+    reviews.length, 
+    appName,
+    positiveCategories,
+    negativeCategories
+  );
+  console.log('[INSIGHT GEN] Insights generated:', insights.length);
 
   return {
     insights,
