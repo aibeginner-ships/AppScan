@@ -1,0 +1,266 @@
+Goal
+
+Improve the Insight Layer introduced in v3 by making insights:
+
+Semantically distinct (unique themes, no duplicates).
+
+Accurately represented (correct quote + theme alignment).
+
+Numerically correct (per-theme metrics instead of global stats).
+
+Better titled and explained (more descriptive titles, not templated ones).
+
+🎯 Core Objectives
+
+Replace keyword-based matching with semantic clustering of reviews using embeddings.
+
+Generate unique insights per cluster (each cluster = one card).
+
+For each insight, recalculate metrics using only reviews from that cluster.
+
+Pick the most representative review per cluster using cosine similarity.
+
+Have OpenAI generate specific, descriptive titles based on cluster content.
+
+⚙️ Stack & Constraints
+
+Backend: Express + Node.js
+
+Frontend: React + Tailwind (no major UI overhaul)
+
+AI: OpenAI API (for summarization, embeddings, titles)
+
+Data Limit: 500 reviews max per analysis
+
+Goal: Maintain single-step /analyze flow
+
+🧱 Functional Requirements
+Backend (Express)
+1️⃣ New Module: semanticClusterer.js
+
+Purpose:
+Group reviews into distinct semantic clusters before insight generation.
+
+Implementation steps:
+
+// Pseudocode outline
+import OpenAI from "openai";
+import { cosineSimilarity, kmeans } from "./utils";
+
+export async function clusterReviews(reviews, k = 3) {
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  
+  // Step 1: Get embeddings
+  const embeddings = await Promise.all(
+    reviews.map(r => client.embeddings.create({
+      model: "text-embedding-3-small",
+      input: r.text.slice(0, 500) // trim long reviews
+    }))
+  );
+
+  // Step 2: Cluster embeddings
+  const clusters = kmeans(embeddings.map(e => e.data[0].embedding), k);
+
+  // Step 3: Assign reviews to clusters
+  return reviews.map((r, i) => ({
+    ...r,
+    clusterId: clusters.assignments[i]
+  }));
+}
+
+
+This ensures each cluster represents a unique semantic theme (e.g., “crashes,” “trust,” “pricing”).
+
+2️⃣ New Module: insightRefiner.js
+
+Purpose: Generate precise insights from clustered reviews.
+
+Steps:
+
+Take reviews grouped by clusterId.
+
+For each cluster:
+
+Compute metrics:
+
+mentions = clusterReviews.length;
+share = mentions / totalReviews;
+negativeRatio = clusterReviews.filter(r => r.sentiment === "negative").length / mentions;
+
+
+Use OpenAI to:
+
+Summarize what users are saying.
+
+Suggest 1–2 actions.
+
+Generate a short descriptive title.
+
+Prompt Example (summarization):
+
+You are a product analyst.
+Summarize the main issue expressed in these user reviews in 2–3 sentences.
+Then provide:
+1. A short descriptive title (2–4 words)
+2. 1 actionable recommendation.
+Return JSON with fields:
+{ "title": "", "summary": "", "suggested_action": "", "representative_quote": "" }
+
+
+Prompt Example (title generation):
+
+Based on this summary: "Users report frequent crashes and login issues",
+generate a concise descriptive title like "Login Crashes" or "App Stability Issues".
+Return only the title.
+
+3️⃣ Representative Quote Selection
+
+Use semantic similarity to find the best quote per cluster:
+
+const insightVector = embed(insight.summary);
+const scored = clusterReviews.map(r => ({
+  text: r.text,
+  score: cosine(embed(r.text), insightVector)
+}));
+const bestReview = scored.sort((a,b) => b.score - a.score)[0].text;
+
+
+This ensures the quote aligns with the insight’s meaning, not random selection.
+
+4️⃣ Insight Data Schema
+
+Final JSON for each insight:
+
+{
+  "title": "App Stability Issues",
+  "why_it_matters": "Crashes and unresponsive UI affect 10% of users, mostly recent updates.",
+  "mentions": 45,
+  "share": "9.0%",
+  "negative_ratio": "82%",
+  "representative_quote": "The app freezes every time I open it after the last update.",
+  "suggested_action": "Investigate session crashes and improve load stability.",
+  "impact": "High",
+  "confidence": "High"
+}
+
+5️⃣ Updated /analyze Endpoint
+
+Pipeline flow:
+
+Fetch reviews
+ → Analyze sentiment
+ → Cluster reviews semantically
+ → Generate per-cluster insights
+ → Compute cluster-level metrics
+ → Return full analysis response
+
+
+Example response payload:
+
+{
+  "app_name": "Airbnb",
+  "trend": [...],
+  "what_users_love": ["Easy booking flow", "Great host experience"],
+  "what_users_hate": ["Buggy login", "Slow app performance"],
+  "insights": [
+    {
+      "title": "Login Bugs After Update",
+      "why_it_matters": "Frequent crashes during login after v5.2 release.",
+      "mentions": 33,
+      "share": "10.0%",
+      "negative_ratio": "80%",
+      "representative_quote": "I can’t log in anymore, app keeps crashing.",
+      "suggested_action": "Reproduce and fix session crash on Android 13.",
+      "impact": "High",
+      "confidence": "High"
+    },
+    {
+      "title": "Search Accuracy Issues",
+      "why_it_matters": "Listings don’t match photos, frustrating user expectations.",
+      "mentions": 25,
+      "share": "8.0%",
+      "negative_ratio": "75%",
+      "representative_quote": "Photos looked great but actual place was very different.",
+      "suggested_action": "Improve listing verification and quality checks.",
+      "impact": "Medium",
+      "confidence": "Medium"
+    }
+  ]
+}
+
+Frontend (React)
+1️⃣ InsightCards.jsx
+
+Already functional — no major UI change.
+
+Ensure each card displays new title, impact, and confidence badges.
+
+Add subtle differentiation (different accent colors or icons by theme).
+
+2️⃣ Sorting & Presentation
+
+Sort insights by impact → then confidence.
+
+Maintain card uniqueness even if metrics overlap.
+
+Add hover tooltip on metrics to explain each term (Mentions, Share, Negative Ratio).
+
+🔧 Step-by-Step Implementation Plan
+Step 1 — Add Embedding & Clustering
+
+Add semanticClusterer.js to backend.
+
+Install ml-kmeans or use lightweight JS k-means implementation.
+
+Generate embeddings via OpenAI.
+
+Tag each review with clusterId.
+
+Step 2 — Enhance Insight Generation
+
+Update insightGenerator.js to:
+
+Accept clusters.
+
+Loop per cluster → call insightRefiner.js.
+
+Compute per-cluster stats.
+
+Select representative quote.
+
+Step 3 — Improve Titles
+
+Use OpenAI to generate short descriptive titles.
+
+If LLM returns generic text (“Address Performance issues”), retry with stronger instruction:
+“Be specific; use natural nouns (e.g., ‘Login Crashes’, not ‘Performance issues’).”
+
+Step 4 — Return Updated JSON
+
+Ensure /analyze response matches new schema.
+
+Validate that insights now have distinct cluster IDs and unique quotes.
+
+Step 5 — QA & Testing
+
+Test on multiple app URLs (Airbnb, Spotify, Duolingo).
+
+Verify:
+
+Each insight has a unique title and distinct quote.
+
+Metrics differ across cards.
+
+Quotes semantically align with titles.
+
+✅ Deliverable for Version 3.1
+
+A refined Insight Layer that:
+
+Generates 3–5 unique insights using semantic clustering.
+
+Accurately matches quotes and metrics to each theme.
+
+Displays descriptive, human-readable titles.
+
+Produces stable, trustworthy outputs for product analysis.
