@@ -11,6 +11,8 @@ export const insightSchema = z.object({
   }),
   representative_quote: z.string(),
   suggested_action: z.string(),
+  impact: z.enum(['High', 'Medium', 'Low']).optional(),
+  confidence: z.enum(['High', 'Medium', 'Low']).optional(),
 });
 
 export type Insight = z.infer<typeof insightSchema>;

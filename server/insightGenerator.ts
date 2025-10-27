@@ -1,4 +1,6 @@
 import { openai } from "./openai";
+import { clusterNegativeReviews } from "./semanticClusterer.js";
+import { refineInsights } from "./insightRefiner.js";
 
 export interface ReviewWithSentiment {
   text: string;
@@ -28,6 +30,8 @@ export interface Insight {
   metrics: InsightMetrics;
   representative_quote: string;
   suggested_action: string;
+  impact?: 'High' | 'Medium' | 'Low';
+  confidence?: 'High' | 'Medium' | 'Low';
 }
 
 export interface LoveHateSummary {
@@ -198,89 +202,46 @@ Return as JSON:
 }
 
 /**
- * Generates actionable insights directly from reviews using OpenAI
+ * Generates actionable insights using semantic clustering (v3.1)
+ * This replaces the old keyword-based approach with embeddings + k-means
  */
 export async function generateActionableInsights(
   reviews: ReviewWithSentiment[],
   totalReviews: number,
-  appName: string,
-  positiveCategories: string[],
   negativeCategories: string[]
 ): Promise<Insight[]> {
-  // Get sample of negative reviews for analysis
-  const negativeReviews = reviews
-    .filter(r => r.sentiment === "negative" && r.text && r.text.trim().length > 10)
-    .slice(0, 100)
-    .map(r => r.text);
-
-  if (negativeReviews.length === 0) {
-    console.log('[INSIGHT GEN] No negative reviews found, returning empty insights');
-    return [];
-  }
-
-  const prompt = `You are a product analyst for ${appName}. Analyze these user complaints and create 2-3 actionable insights.
-
-Negative Feedback Categories: ${negativeCategories.join(', ')}
-
-Sample Negative Reviews (${negativeReviews.length} of ${totalReviews} total):
-${negativeReviews.slice(0, 50).join('\n---\n')}
-
-Create 2-3 insights as a JSON object with an "insights" array. Each insight must have:
-{
-  "insights": [
-    {
-      "title": "Clear issue title (5-8 words)",
-      "why_it_matters": "One sentence explaining impact",
-      "metrics": {
-        "mentions": <estimated number of reviews mentioning this>,
-        "share": <estimated decimal 0-1 of total reviews>,
-        "negative_ratio": <estimated decimal 0-1 of negative sentiment>
-      },
-      "representative_quote": "A real user quote from the samples above",
-      "suggested_action": "Specific, actionable next step"
-    }
-  ]
-}
-
-Focus on:
-- Most frequently mentioned issues
-- High-impact problems affecting user experience
-- Issues that appear urgent or recent
-
-Be specific, data-backed, and actionable.`;
-
+  console.log('[INSIGHT GEN] Starting semantic clustering approach...');
+  
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        { role: "system", content: "You are a product analyst creating actionable insights from user feedback." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" },
-      max_completion_tokens: 1000,
-    });
-
-    const content = completion.choices[0].message.content || "{}";
-    console.log('[INSIGHT GEN] OpenAI response:', content.substring(0, 200) + '...');
-    const result = JSON.parse(content);
+    // Step 1: Cluster negative reviews by semantic similarity
+    const clusteredReviews = await clusterNegativeReviews(reviews);
     
-    // Handle both array and object with 'insights' key
-    const insights = Array.isArray(result) ? result : (result.insights || []);
-    console.log('[INSIGHT GEN] Parsed insights:', insights.length);
-    
-    // If OpenAI returned no insights, use fallback
-    if (insights.length === 0) {
-      console.log('[INSIGHT GEN] OpenAI returned empty insights, using fallback');
-      throw new Error('Empty insights from OpenAI');
+    if (clusteredReviews.length === 0) {
+      console.log('[INSIGHT GEN] No negative reviews to cluster');
+      return [];
     }
+
+    console.log(`[INSIGHT GEN] Clustered ${clusteredReviews.length} negative reviews`);
+
+    // Step 2: Generate refined insights from clusters
+    const refinedInsights = await refineInsights(clusteredReviews, totalReviews);
     
-    return insights.slice(0, 3);
+    console.log(`[INSIGHT GEN] Generated ${refinedInsights.length} semantic insights`);
+    
+    return refinedInsights;
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-    console.error("[INSIGHT GEN] Error or empty result, using fallback insights:", errorMsg);
+    console.error('[INSIGHT GEN] Error in semantic clustering, falling back to category-based insights:', error);
     
     // Fallback: create basic insights from categories
-    const fallbackInsights = negativeCategories.slice(0, 2).map((category, index) => ({
+    const negativeReviews = reviews
+      .filter(r => r.sentiment === "negative" && r.text && r.text.trim().length > 10)
+      .map(r => r.text);
+    
+    if (negativeReviews.length === 0) {
+      return [];
+    }
+    
+    const fallbackInsights = negativeCategories.slice(0, 3).map((category, index) => ({
       title: `Address ${category} issues`,
       why_it_matters: `${category} is a major pain point mentioned in user reviews`,
       metrics: {
@@ -289,7 +250,9 @@ Be specific, data-backed, and actionable.`;
         negative_ratio: 0.8
       },
       representative_quote: negativeReviews[index] || "Users have reported issues with this aspect",
-      suggested_action: `Investigate and improve ${category.toLowerCase()}`
+      suggested_action: `Investigate and improve ${category.toLowerCase()}`,
+      impact: 'Medium' as const,
+      confidence: 'Low' as const
     }));
     
     console.log('[INSIGHT GEN] Generated', fallbackInsights.length, 'fallback insights');
@@ -298,7 +261,7 @@ Be specific, data-backed, and actionable.`;
 }
 
 /**
- * Main function to generate all insights
+ * Main function to generate all insights (v3.1 with semantic clustering)
  */
 export async function generateInsights(
   reviews: ReviewWithSentiment[],
@@ -306,7 +269,7 @@ export async function generateInsights(
   negativeCategories: string[],
   appName: string
 ): Promise<InsightGenerationResult> {
-  console.log('[INSIGHT GEN] Starting insight generation');
+  console.log('[INSIGHT GEN] Starting v3.1 insight generation with semantic clustering');
   console.log('[INSIGHT GEN] Reviews:', reviews.length, 'Positive cats:', positiveCategories.length, 'Negative cats:', negativeCategories.length);
   
   // Generate love/hate summaries
@@ -314,16 +277,14 @@ export async function generateInsights(
   const loveHate = await generateLoveHateSummaries(reviews);
   console.log('[INSIGHT GEN] Love/hate generated:', loveHate.love.length, 'love,', loveHate.hate.length, 'hate');
   
-  // Generate actionable insights directly from reviews
-  console.log('[INSIGHT GEN] Generating actionable insights...');
+  // Generate actionable insights using semantic clustering
+  console.log('[INSIGHT GEN] Generating semantic insights...');
   const insights = await generateActionableInsights(
     reviews, 
-    reviews.length, 
-    appName,
-    positiveCategories,
+    reviews.length,
     negativeCategories
   );
-  console.log('[INSIGHT GEN] Insights generated:', insights.length);
+  console.log('[INSIGHT GEN] Semantic insights generated:', insights.length);
 
   return {
     insights,
