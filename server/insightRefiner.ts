@@ -14,6 +14,7 @@ export interface RefinedInsight {
     negative_ratio: number;
   };
   representative_quote: string;
+  quote_similarity: number;
   suggested_action: string;
   impact: 'High' | 'Medium' | 'Low';
   confidence: 'High' | 'Medium' | 'Low';
@@ -216,19 +217,24 @@ Example bad suggested_action: "Investigate and address user concerns about login
     // Combine title and why_it_matters to create a summary for comparison
     const clusterSummary = `${title}. ${result.why_it_matters || ''}`;
     const representative_quote = selectRepresentativeQuote(sampleReviews, clusterSummary);
+    
+    // Calculate quote similarity score for frontend filtering
+    const quote_similarity = textSimilarity(representative_quote, clusterSummary);
 
-    // Determine impact and confidence based on metrics
+    // v3.1.3: Rule-based Impact and Confidence scoring
+    // IMPACT: Based on negative ratio and share percentage
     let impact: 'High' | 'Medium' | 'Low' = 'Low';
-    if (share >= 0.15 && negative_ratio >= 0.7) {
+    if (negative_ratio > 0.70 || share > 0.05) {
       impact = 'High';
-    } else if (share >= 0.08 || negative_ratio >= 0.75) {
+    } else if (share > 0.02) {
       impact = 'Medium';
     }
 
+    // CONFIDENCE: Based on number of mentions
     let confidence: 'High' | 'Medium' | 'Low' = 'Low';
-    if (mentions >= 30) {
+    if (mentions > 30) {
       confidence = 'High';
-    } else if (mentions >= 15) {
+    } else if (mentions > 10) {
       confidence = 'Medium';
     }
 
@@ -241,6 +247,7 @@ Example bad suggested_action: "Investigate and address user concerns about login
         negative_ratio,
       },
       representative_quote,
+      quote_similarity,
       suggested_action,
       impact,
       confidence,

@@ -10,9 +10,10 @@ export const insightSchema = z.object({
     negative_ratio: z.number(),
   }),
   representative_quote: z.string(),
+  quote_similarity: z.number(),
   suggested_action: z.string(),
-  impact: z.enum(['High', 'Medium', 'Low']).optional(),
-  confidence: z.enum(['High', 'Medium', 'Low']).optional(),
+  impact: z.enum(['High', 'Medium', 'Low']),
+  confidence: z.enum(['High', 'Medium', 'Low']),
 });
 
 export type Insight = z.infer<typeof insightSchema>;

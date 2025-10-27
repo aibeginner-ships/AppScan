@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, TrendingUp, Quote } from "lucide-react";
+import { AlertCircle, Quote } from "lucide-react";
 import type { Insight } from "@shared/schema";
 
 interface InsightCardsProps {
@@ -12,16 +12,11 @@ export default function InsightCards({ insights }: InsightCardsProps) {
     return null;
   }
 
-  const getImpactLevel = (share: number): { label: string; color: string } => {
-    if (share >= 0.15) return { label: "High", color: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200" };
-    if (share >= 0.08) return { label: "Medium", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200" };
-    return { label: "Low", color: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200" };
-  };
-
-  const getConfidenceLevel = (mentions: number): { label: string; color: string } => {
-    if (mentions >= 50) return { label: "High", color: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200" };
-    if (mentions >= 20) return { label: "Medium", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200" };
-    return { label: "Low", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200" };
+  // v3.1.3: Badge color mapping - High=Green, Medium=Yellow, Low=Grey
+  const getBadgeColor = (level: 'High' | 'Medium' | 'Low'): string => {
+    if (level === 'High') return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200";
+    if (level === 'Medium') return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200";
+    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
   };
 
   return (
@@ -40,8 +35,8 @@ export default function InsightCards({ insights }: InsightCardsProps) {
 
       <div className="grid grid-cols-1 gap-6" data-testid="insight-cards-container">
         {insights.map((insight, index) => {
-          const impact = getImpactLevel(insight.metrics.share);
-          const confidence = getConfidenceLevel(insight.metrics.mentions);
+          // v3.1.3: Conditional quote display - only show if similarity > 0.5 AND length > 20
+          const shouldShowQuote = insight.quote_similarity > 0.5 && insight.representative_quote.length > 20;
 
           return (
             <Card key={index} className="p-8 hover-elevate" data-testid={`insight-card-${index}`}>
@@ -89,37 +84,27 @@ export default function InsightCards({ insights }: InsightCardsProps) {
                     </div>
                   </div>
 
-                  <div className="rounded-lg bg-muted/50 p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <Quote className="h-4 w-4 text-muted-foreground" />
-                      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                        User Quote
+                  {shouldShowQuote && (
+                    <div className="rounded-lg bg-muted/50 p-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Quote className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                          User Quote
+                        </p>
+                      </div>
+                      <p className="italic text-muted-foreground" data-testid={`insight-quote-${index}`}>
+                        "{insight.representative_quote}"
                       </p>
                     </div>
-                    <p className="italic text-muted-foreground" data-testid={`insight-quote-${index}`}>
-                      "{insight.representative_quote}"
-                    </p>
-                  </div>
-
-                  <div className="rounded-lg bg-primary/5 p-4">
-                    <div className="mb-2 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                        Suggested Action
-                      </p>
-                    </div>
-                    <p className="font-medium" data-testid={`insight-action-${index}`}>
-                      {insight.suggested_action}
-                    </p>
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className={impact.color}>
-                    Impact: {impact.label}
+                  <Badge variant="secondary" className={getBadgeColor(insight.impact)}>
+                    Impact: {insight.impact}
                   </Badge>
-                  <Badge variant="secondary" className={confidence.color}>
-                    Confidence: {confidence.label}
+                  <Badge variant="secondary" className={getBadgeColor(insight.confidence)}>
+                    Confidence: {insight.confidence}
                   </Badge>
                 </div>
               </div>
