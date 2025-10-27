@@ -1,8 +1,8 @@
-# AppScan - App Review Summarizer with Sentiment Analysis
+# AppScan v3.1 - App Review Summarizer with Semantic Clustering
 
 ## Overview
 
-AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
+AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. **Version 3.1 introduces semantic clustering** to generate 3-5 unique, distinct actionable insights with per-cluster metrics, impact/confidence scoring, and enforced uniqueness. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
 
 ## User Preferences
 
@@ -19,11 +19,39 @@ The frontend is built with **React and TypeScript**, utilizing **Vite** for fast
 
 ### Backend
 
-The backend uses **Node.js with Express.js**. It exposes a `POST /api/analyze` endpoint that accepts app store URLs. The server detects the platform, extracts the app ID, and scrapes up to 500 reviews using platform-specific scrapers. It then classifies sentiment based on review scores (4+ positive, 2- negative, 3 neutral), aggregates monthly trends for ratings and sentiment, and generates dynamic insight summaries. OpenAI is used for topic categorization of reviews. Results are returned as JSON, with no database persistence. **Zod** is used for schema validation, ensuring type safety.
+The backend uses **Node.js with Express.js**. It exposes a `POST /api/analyze` endpoint that accepts app store URLs. The server detects the platform, extracts the app ID, and scrapes up to 500 reviews using platform-specific scrapers. It then classifies sentiment based on review scores (4+ positive, 2- negative, 3 neutral), aggregates monthly trends for ratings and sentiment, and generates actionable insights using **semantic clustering** (v3.1). Results are returned as JSON, with no database persistence. **Zod** is used for schema validation, ensuring type safety.
 
 ### Sentiment Analysis System
 
 Sentiment is classified based on review scores: 4+ is Positive, 2- is Negative, and 3 is Neutral. Monthly trends track average ratings and positive/negative review counts over the last 6 months. An insight generator compares sentiment changes between the first and last month of data, providing natural language summaries of improvements, declines, or stability.
+
+### Insight Generation System (v3.1)
+
+**Version 3.1** introduces a semantic clustering pipeline to generate 3-5 unique, distinct actionable insights:
+
+1. **Semantic Clustering** (`semanticClusterer.ts`):
+   - Primary: LLM-based clustering using OpenAI chat completions to identify 3-5 semantic themes
+   - Fallback: Keyword-based clustering using 7 predefined categories (crashes, performance, login, pricing, features, UI, support)
+   - Ensures distributed cluster assignment across reviews
+
+2. **Insight Refinement** (`insightRefiner.ts`):
+   - Per-cluster insight generation with OpenAI
+   - Keyword extraction fallback for titles when OpenAI fails (`generateTitleFromReviews`)
+   - **Uniqueness enforcement**: Post-processing ensures no duplicate titles/actions
+   - Appends differentiators when titles collide: "(Part 2)", "Issues", "Problems"
+   - Per-cluster metrics calculation: mentions, share (%), negative_ratio
+   - Impact scoring (High/Medium/Low) based on share and negativity
+   - Confidence scoring (High/Medium/Low) based on review count
+
+3. **ML Utilities** (`utils/ml.ts`):
+   - Cosine similarity calculation
+   - K-means clustering (available for future embeddings-based clustering)
+
+**Key Improvements**:
+- Semantically distinct insights (no duplicates)
+- Accurate per-cluster metrics (not global averages)
+- Impact and confidence scoring
+- Robust multi-level fallback system
 
 ### UI/UX Design
 
