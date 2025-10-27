@@ -1,0 +1,117 @@
+🎯 Goals
+
+Simplify insights for clarity and professionalism.
+
+Ensure all displayed metrics and badges have consistent, meaningful logic.
+
+Preserve backend JSON format and UI layout stability.
+
+⚙️ Changes to Implement
+1️⃣ Remove or Hide Sections That Add Noise
+
+A. Suggested Action
+
+Remove the “Suggested Action” section from insight cards.
+
+Keep the backend field in JSON response (suggested_action) for backward compatibility.
+
+Do not render this field on the front-end UI.
+
+Rationale:
+Currently generic and misaligned with insight themes; provides little analytical value.
+
+B. User Quote
+
+Conditionally display the representative_quote field only if it meets a minimum similarity threshold.
+
+Use the existing token-similarity or Jaccard similarity function.
+
+Hide the quote if similarity < 0.5 (or if quote text length < 20 chars).
+
+Rationale:
+Prevents mismatched or irrelevant quotes from confusing users while preserving strong examples.
+
+Example logic:
+
+if (quoteSimilarity > 0.5 && quote.length > 20) {
+  displayQuote(quote)
+} else {
+  hideQuoteSection()
+}
+
+2️⃣ Retain & Improve Impact / Confidence Badges
+
+Keep the badges visible — they’re valuable — but make their computation explicit, stable, and believable using a rules-based system.
+
+Implementation Logic (in insightRefiner.ts):
+
+// IMPACT
+if (negative_ratio > 70 || share_of_reviews > 5) impact = "High";
+else if (share_of_reviews > 2) impact = "Medium";
+else impact = "Low";
+
+// CONFIDENCE
+if (mentions > 30) confidence = "High";
+else if (mentions > 10) confidence = "Medium";
+else confidence = "Low";
+
+
+✅ Always ensure both fields (impact, confidence) are present in the JSON output, even if hidden later by UI.
+
+UI Rendering:
+
+Keep badge styling identical.
+
+Use color mapping:
+
+High → Green
+
+Medium → Yellow
+
+Low → Grey
+
+Rationale:
+Badges lend analytical depth and trust — but only if logically consistent.
+
+3️⃣ UI Layout Adjustments
+
+Remove “Suggested Action” card row entirely.
+
+Reflow insight card layout to use available space:
+
+“User Quote” (if shown) → below metrics.
+
+“Impact” and “Confidence” badges → bottom-left, compact horizontal alignment.
+
+This keeps the design balanced while simplifying the narrative hierarchy.
+
+4️⃣ Maintain API & Logic Integrity
+
+No schema or endpoint changes.
+
+Preserve current /analyze response format (so older front-end calls still work).
+
+Logically suppress rendering of optional fields in the front-end React component.
+
+✅ This ensures backward compatibility with existing v3.1.2 integrations.
+
+🧪 QA Plan Post-Implementation
+Test Case	Expected Behavior
+Insight with strong quote match	Quote displayed
+Insight with weak quote match	Quote hidden
+High-frequency cluster (>30 mentions, 80% neg)	Impact: High, Confidence: High
+Low-frequency cluster (<10 mentions, <50% neg)	Impact: Low, Confidence: Low
+Insight card rendering	“Suggested Action” removed, badges aligned bottom
+
+Test with Spotify and Airbnb to verify logic consistency.
+
+🧭 Deliverable Summary
+Area	Change	Outcome
+Suggested Action	Removed	Cleaner, less noise
+User Quote	Conditional display	Fewer mismatches
+Impact / Confidence	Rule-based scoring	Authentic, trustworthy badges
+Layout	Simplified	Clearer hierarchy
+API	Unchanged	Fully backward compatible
+🧠 One-line Replit Instruction
+
+“Upgrade AppScan to v3.1.3 Cleanup Build — remove Suggested Action, conditionally display quotes, and implement rule-based Impact & Confidence logic per PRD while maintaining existing functionality.”
