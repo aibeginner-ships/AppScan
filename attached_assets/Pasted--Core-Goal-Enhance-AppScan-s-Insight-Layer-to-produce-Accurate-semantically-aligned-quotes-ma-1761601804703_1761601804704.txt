@@ -1,0 +1,156 @@
+🧠 Core Goal
+
+Enhance AppScan’s Insight Layer to produce:
+
+Accurate, semantically aligned quotes (matching each insight theme).
+
+Unique, context-aware suggested actions (no repetition or generic phrasing).
+
+Cleaner cluster quality (fewer mixed-topic insights).
+
+This version focuses purely on quality and trustworthiness — no new UI, APIs, or datasets.
+
+⚙️ Current State (v3.1.1)
+
+Clustering (LLM or fallback) → ✅ Working correctly, generates 3–5 clusters
+
+Insight generation → ⚠️ Produces correct metrics but with mismatched quotes and generic actions
+
+Fallback systems → ✅ Stable, correctly trigger when LLM clustering fails
+
+🧱 Changes to Implement (Structured by Module)
+1️⃣ Module: insightRefiner.ts
+
+Purpose: Improve representative quote selection and suggested action generation.
+
+A. Representative Quote Selection (High Priority)
+
+Currently, quotes are either random or first-review selections, leading to title–quote mismatches.
+
+Update Logic:
+
+Compute a lightweight text similarity score between each review and the cluster summary (no embeddings).
+
+Pick the highest scoring review as the representative quote.
+
+Implementation outline:
+
+// Step 1: Tokenize & lowercase
+function textSimilarity(a: string, b: string) {
+  const aTokens = new Set(a.toLowerCase().split(/\W+/));
+  const bTokens = new Set(b.toLowerCase().split(/\W+/));
+  const intersection = [...aTokens].filter(x => bTokens.has(x));
+  const union = new Set([...aTokens, ...bTokens]);
+  return intersection.length / union.size;
+}
+
+// Step 2: Choose best quote
+function selectRepresentativeQuote(reviews, clusterSummary) {
+  let best = { text: "", score: 0 };
+  for (const r of reviews) {
+    const s = textSimilarity(r.text, clusterSummary);
+    if (s > best.score) best = { text: r.text, score: s };
+  }
+  return best.text || reviews[0].text; // fallback
+}
+
+
+✅ This ensures the quote text semantically overlaps with the insight’s description without requiring embeddings.
+
+B. Suggested Action Contextualization (Medium Priority)
+
+Currently, all insights share a generic “Investigate user issues” or “Improve UX” action.
+
+Fix: Modify the prompt to include context about the insight’s theme and representative quote.
+
+Old Prompt:
+
+“Provide one suggested action for improvement.”
+
+New Prompt:
+
+You are a product manager analyzing app reviews.
+Theme: "Users report login crashes after update"
+Representative quote: "The app freezes when I try to sign in."
+Write one short, specific, actionable improvement suggestion (max 15 words).
+Example: "Fix login crash in version 5.3 for Android 13 users."
+Return only the action text.
+
+
+✅ This ensures unique and relevant actions across insight cards.
+
+2️⃣ Module: clusterRefiner.ts
+
+Purpose: Minor refinement to prevent mixed-topic clusters (Medium Priority)
+
+Issue: Some clusters contain unrelated topics (“UI design” + “pricing”).
+
+Fix: Add a lightweight keyword-separation post-pass (no embeddings required).
+
+Implementation outline:
+
+function refineClusters(clusters) {
+  const keywordThemes = ["crash", "bug", "error", "slow", "price", "ads", "design", "login"];
+  
+  return clusters.flatMap(cluster => {
+    const newSubclusters = {};
+    for (const review of cluster.reviews) {
+      const matchedKeyword = keywordThemes.find(k => review.text.toLowerCase().includes(k));
+      const key = matchedKeyword || "other";
+      if (!newSubclusters[key]) newSubclusters[key] = [];
+      newSubclusters[key].push(review);
+    }
+
+    // Flatten back to array of refined clusters
+    return Object.values(newSubclusters).filter(c => c.length >= 5);
+  });
+}
+
+
+✅ This quick refinement avoids “mixed-topic” clusters without altering overall logic or count.
+
+3️⃣ Prompt Updates — Insight Generation
+
+Current Issue:
+OpenAI returns generic “User Feedback Theme” titles and repetitive summaries when context is weak.
+
+Fix:
+Update the title/summary generation prompt to include the top keywords and representative quote.
+
+New Prompt Example:
+
+Summarize this cluster of app reviews into one short insight.
+
+Context:
+Top keywords: "crash, login, update"
+Representative quote: "The app freezes when I try to sign in."
+Instructions:
+1. Provide a short descriptive title (3–5 words).
+2. Write a 1–2 sentence summary of the problem.
+Return structured JSON:
+{
+  "title": "",
+  "why_it_matters": "",
+  "suggested_action": ""
+}
+
+
+✅ Gives OpenAI clear context → better titles and summaries.
+
+🧪 QA Plan After Implementation
+
+After deployment, validate with 3 apps:
+
+App	Expected Outcome
+Spotify	Each insight has distinct title & quote; actions vary (“Optimize streaming load”, “Fix crash on play”).
+Airbnb	Quotes match title (“Photos misleading” → quote about photo filters).
+Duolingo	No mixed clusters (pricing vs UX separated).
+🔐 Guardrails
+
+Do not alter /analyze API response format (front-end compatibility).
+
+Maintain existing fallback logic and cluster count (3–5 insights minimum).
+
+Keep LLM calls minimal (no additional OpenAI requests per insight beyond current flow).
+
+Only modify insight refinement internals.
