@@ -1,8 +1,8 @@
-# AppScan v3.1.3 - App Review Summarizer with Clarity-Focused Insights
+# AppScan v3.2 - App Review Summarizer with Modern SaaS Design
 
 ## Overview
 
-AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. **Version 3.1.3** refines the insights experience with rule-based scoring, conditional quote display, and simplified UI for maximum clarity and professionalism. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
+AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. **Version 3.2** introduces a modern, professional SaaS design refresh with Lucide icons, improved spacing, neutral color palette, and polished visual hierarchy inspired by Linear and Notion. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
 
 ## User Preferences
 
@@ -70,7 +70,19 @@ Sentiment is classified based on review scores: 4+ is Positive, 2- is Negative, 
 
 ### UI/UX Design
 
-The design prioritizes clarity and information density with a clean, minimal interface. A custom color scheme includes blue for primary actions, green for positive, red for negative, and yellow for insights, all with full dark mode support. Typography uses Inter for body text and JetBrains Mono for data. Components feature rounded corners, color-coded badges, and clear loading/error states.
+**v3.2 introduces a modern, professional SaaS aesthetic:**
+
+- **Visual Design**: Clean, minimal interface inspired by Linear and Notion with professional Lucide icons throughout
+- **Typography**: Inter font at 15px with relaxed leading for improved readability
+- **Color Palette**: Neutral grays (gray-50, neutral-600/700/800) for text and backgrounds
+- **Spacing**: Generous padding (p-6) and rounded corners (rounded-2xl) for a modern feel
+- **Layout**: 2-column grid for insight cards on desktop, responsive single column on mobile
+- **Interactions**: Subtle hover effects (shadow-md → shadow-lg, slight lift), smooth transitions
+- **Animations**: Fade-in effects for insight cards (opacity + translateY)
+- **Icons**: Professional Lucide icons (Gauge, BarChart3, TrendingUp, Star, etc.) in color-coded containers
+- **Components**: All cards use consistent rounded-2xl styling with shadow-md and hover:shadow-lg
+
+The design prioritizes clarity and information density with a data-first approach. Full dark mode support with neutral-900 backgrounds and adjusted contrast. Color-coded badges (green/yellow/grey for Impact, blue/amber/grey for Confidence) provide quick visual cues.
 
 ## External Dependencies
 

@@ -16,7 +16,7 @@ interface AnalysisProps {
 
 export default function Analysis({ data, onBack }: AnalysisProps) {
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 p-4 md:p-8">
       <div className="mx-auto w-full max-w-7xl">
         <div className="mb-12">
           <Button
@@ -28,11 +28,11 @@ export default function Analysis({ data, onBack }: AnalysisProps) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h2 className="text-3xl font-semibold" data-testid="text-app-name">
+          <h2 className="text-3xl font-semibold text-neutral-800 dark:text-neutral-100" data-testid="text-app-name">
             Your app analysis
           </h2>
           <div className="mt-2 flex items-center gap-4">
-            <h3 className="text-xl text-muted-foreground">{data.appName}</h3>
+            <h3 className="text-xl text-neutral-600 dark:text-neutral-400">{data.appName}</h3>
             <Badge variant="secondary" data-testid="badge-store">
               {data.store}
             </Badge>
@@ -58,7 +58,9 @@ export default function Analysis({ data, onBack }: AnalysisProps) {
             whatUsersHate={data.whatUsersHate}
           />
 
-          <InsightCards insights={data.insights} />
+          <div className="animate-fadeIn">
+            <InsightCards insights={data.insights} />
+          </div>
 
           <ReviewList reviews={data.topNegativeReviews} />
 

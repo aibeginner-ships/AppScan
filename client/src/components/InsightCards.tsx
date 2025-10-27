@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Quote } from "lucide-react";
+import { Gauge, MessageSquare } from "lucide-react";
 import type { Insight } from "@shared/schema";
 
 interface InsightCardsProps {
@@ -12,100 +12,87 @@ export default function InsightCards({ insights }: InsightCardsProps) {
     return null;
   }
 
-  // v3.1.3: Badge color mapping - High=Green, Medium=Yellow, Low=Grey
-  const getBadgeColor = (level: 'High' | 'Medium' | 'Low'): string => {
-    if (level === 'High') return "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200";
-    if (level === 'Medium') return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200";
-    return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200";
+  // v3.2: Modern badge colors for SaaS design
+  const getImpactBadgeColor = (level: 'High' | 'Medium' | 'Low'): string => {
+    if (level === 'High') return "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300";
+    if (level === 'Medium') return "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300";
+    return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
+  };
+
+  const getConfidenceBadgeColor = (level: 'High' | 'Medium' | 'Low'): string => {
+    if (level === 'High') return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
+    if (level === 'Medium') return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300";
+    return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-          <AlertCircle className="h-6 w-6 text-primary" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950">
+          <Gauge className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
-          <h3 className="text-xl font-semibold">Actionable Insights</h3>
-          <p className="text-sm text-muted-foreground">
+          <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Actionable Insights</h3>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Data-backed recommendations to improve your app
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6" data-testid="insight-cards-container">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" data-testid="insight-cards-container">
         {insights.map((insight, index) => {
           // v3.1.3: Conditional quote display - only show if similarity > 0.5 AND length > 20
           const shouldShowQuote = insight.quote_similarity > 0.5 && insight.representative_quote.length > 20;
 
           return (
-            <Card key={index} className="p-8 hover-elevate" data-testid={`insight-card-${index}`}>
-              <div className="space-y-6">
-                <div>
-                  <h4 className="text-lg font-semibold" data-testid={`insight-title-${index}`}>
-                    {insight.title}
-                  </h4>
+            <Card 
+              key={index} 
+              className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150 hover:-translate-y-0.5" 
+              data-testid={`insight-card-${index}`}
+            >
+              <div className="space-y-4">
+                {/* Header: Title + Badges */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2 flex-1">
+                    <Gauge size={18} className="text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
+                    <h4 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 leading-snug" data-testid={`insight-title-${index}`}>
+                      {insight.title}
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant="secondary" className={getImpactBadgeColor(insight.impact)}>
+                      {insight.impact}
+                    </Badge>
+                    <Badge variant="secondary" className={getConfidenceBadgeColor(insight.confidence)}>
+                      {insight.confidence}
+                    </Badge>
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                      Why It Matters
-                    </p>
-                    <p className="mt-1 text-muted-foreground" data-testid={`insight-why-${index}`}>
-                      {insight.why_it_matters}
-                    </p>
+                {/* Why It Matters */}
+                <p className="text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300" data-testid={`insight-why-${index}`}>
+                  {insight.why_it_matters}
+                </p>
+
+                {/* User Quote (Conditional) */}
+                {shouldShowQuote && (
+                  <blockquote className="border-l-2 border-neutral-200 dark:border-neutral-700 pl-3 italic text-neutral-600 dark:text-neutral-400" data-testid={`insight-quote-${index}`}>
+                    "{insight.representative_quote}"
+                  </blockquote>
+                )}
+
+                {/* Metrics Footer */}
+                <div className="flex flex-wrap justify-between gap-2 text-sm text-neutral-500 dark:text-neutral-400 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                  <div className="flex items-center gap-1">
+                    <MessageSquare size={14} className="text-neutral-400" />
+                    <span data-testid={`insight-mentions-${index}`}>{insight.metrics.mentions} mentions</span>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                        Mentions
-                      </p>
-                      <p className="mt-1 font-mono text-2xl font-bold" data-testid={`insight-mentions-${index}`}>
-                        {insight.metrics.mentions}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                        Share of Reviews
-                      </p>
-                      <p className="mt-1 font-mono text-2xl font-bold" data-testid={`insight-share-${index}`}>
-                        {(insight.metrics.share * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                        Negative Ratio
-                      </p>
-                      <p className="mt-1 font-mono text-2xl font-bold text-red-600 dark:text-red-400" data-testid={`insight-negative-ratio-${index}`}>
-                        {(insight.metrics.negative_ratio * 100).toFixed(0)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  {shouldShowQuote && (
-                    <div className="rounded-lg bg-muted/50 p-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <Quote className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                          User Quote
-                        </p>
-                      </div>
-                      <p className="italic text-muted-foreground" data-testid={`insight-quote-${index}`}>
-                        "{insight.representative_quote}"
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className={getBadgeColor(insight.impact)}>
-                    Impact: {insight.impact}
-                  </Badge>
-                  <Badge variant="secondary" className={getBadgeColor(insight.confidence)}>
-                    Confidence: {insight.confidence}
-                  </Badge>
+                  <span data-testid={`insight-negative-ratio-${index}`}>
+                    {(insight.metrics.negative_ratio * 100).toFixed(0)}% negative
+                  </span>
+                  <span data-testid={`insight-share-${index}`}>
+                    {(insight.metrics.share * 100).toFixed(1)}% share
+                  </span>
                 </div>
               </div>
             </Card>

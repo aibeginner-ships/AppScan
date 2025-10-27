@@ -1,4 +1,5 @@
 import { Card } from "@/components/ui/card";
+import { TrendingUp, BarChart3 } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -26,11 +27,18 @@ interface TrendChartProps {
 export default function TrendChart({ data }: TrendChartProps) {
   return (
     <div className="space-y-6">
-      <Card className="p-8">
-        <h3 className="text-xl font-semibold">Rating Trend</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Average rating over time
-        </p>
+      <Card className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950">
+            <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Rating Trend</h3>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Average rating over time
+            </p>
+          </div>
+        </div>
         <div className="mt-6 h-80" data-testid="chart-rating-trend">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
@@ -49,7 +57,7 @@ export default function TrendChart({ data }: TrendChartProps) {
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
+                  borderRadius: "12px",
                 }}
               />
               <Line 
@@ -65,11 +73,18 @@ export default function TrendChart({ data }: TrendChartProps) {
         </div>
       </Card>
 
-      <Card className="p-8">
-        <h3 className="text-xl font-semibold">Sentiment Trend</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Positive vs negative reviews by month
-        </p>
+      <Card className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-950">
+            <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Sentiment Trend</h3>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              Positive vs negative reviews by month
+            </p>
+          </div>
+        </div>
         <div className="mt-6 h-80" data-testid="chart-sentiment-trend">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
@@ -87,7 +102,7 @@ export default function TrendChart({ data }: TrendChartProps) {
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
+                  borderRadius: "12px",
                 }}
               />
               <Legend />
