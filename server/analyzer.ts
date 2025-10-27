@@ -1,4 +1,6 @@
 import { openai } from "./openai";
+import { generateInsights, type ReviewWithSentiment as ReviewWithSentimentType } from "./insightGenerator";
+import type { AnalysisResult as AnalysisResultType, Insight } from "@shared/schema";
 
 interface Review {
   text: string;
@@ -22,6 +24,9 @@ interface AnalysisResult {
   negativePercentage: number;
   trend: Array<{ month: string; avgRating: number; positive: number; negative: number }>;
   summary: string;
+  insights: Insight[];
+  whatUsersLove: string[];
+  whatUsersHate: string[];
 }
 
 export async function analyzeReviews(
@@ -57,6 +62,14 @@ export async function analyzeReviews(
     .slice(0, 5)
     .map((r) => r.text);
 
+  // Generate actionable insights
+  const insightResults = await generateInsights(
+    reviewsWithSentiment,
+    categories.positive,
+    categories.negative,
+    appName
+  );
+
   return {
     appName,
     store,
@@ -69,6 +82,9 @@ export async function analyzeReviews(
     negativePercentage,
     trend,
     summary,
+    insights: insightResults.insights,
+    whatUsersLove: insightResults.whatUsersLove,
+    whatUsersHate: insightResults.whatUsersHate,
   };
 }
 

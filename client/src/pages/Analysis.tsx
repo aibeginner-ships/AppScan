@@ -5,6 +5,8 @@ import SummaryCards from "@/components/SummaryCards";
 import ReviewList from "@/components/ReviewList";
 import TrendChart from "@/components/TrendChart";
 import InsightSummary from "@/components/InsightSummary";
+import WhatLoveHateBlock from "@/components/WhatLoveHateBlock";
+import InsightCards from "@/components/InsightCards";
 import type { AnalysisResult } from "@shared/schema";
 
 interface AnalysisProps {
@@ -50,6 +52,13 @@ export default function Analysis({ data, onBack }: AnalysisProps) {
           <InsightSummary summary={data.summary} />
 
           <TrendChart data={data.trend} />
+
+          <WhatLoveHateBlock
+            whatUsersLove={data.whatUsersLove}
+            whatUsersHate={data.whatUsersHate}
+          />
+
+          <InsightCards insights={data.insights} />
 
           <ReviewList reviews={data.topNegativeReviews} />
 

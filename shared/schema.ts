@@ -1,5 +1,20 @@
 import { z } from "zod";
 
+// Insight schema
+export const insightSchema = z.object({
+  title: z.string(),
+  why_it_matters: z.string(),
+  metrics: z.object({
+    mentions: z.number(),
+    share: z.number(),
+    negative_ratio: z.number(),
+  }),
+  representative_quote: z.string(),
+  suggested_action: z.string(),
+});
+
+export type Insight = z.infer<typeof insightSchema>;
+
 // Analysis result schema
 export const analysisResultSchema = z.object({
   appName: z.string(),
@@ -18,6 +33,9 @@ export const analysisResultSchema = z.object({
     negative: z.number(),
   })),
   summary: z.string(),
+  insights: z.array(insightSchema),
+  whatUsersLove: z.array(z.string()),
+  whatUsersHate: z.array(z.string()),
 });
 
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
