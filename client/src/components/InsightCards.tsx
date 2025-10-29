@@ -26,14 +26,14 @@ export default function InsightCards({ insights }: InsightCardsProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950">
           <Gauge className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         <div>
-          <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">Actionable Insights</h3>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          <h3 className="text-lg font-semibold text-[#111827] dark:text-neutral-100">Actionable Insights</h3>
+          <p className="text-sm text-[#6B7280] dark:text-neutral-400">
             Data-backed recommendations to improve your app
           </p>
         </div>
@@ -47,15 +47,15 @@ export default function InsightCards({ insights }: InsightCardsProps) {
           return (
             <Card 
               key={index} 
-              className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150 hover:-translate-y-0.5" 
+              className="p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-neutral-700 bg-white dark:bg-neutral-800" 
               data-testid={`insight-card-${index}`}
             >
               <div className="space-y-4">
                 {/* Header: Title + Badges */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-2 flex-1">
-                    <Gauge size={18} className="text-indigo-500 dark:text-indigo-400 mt-0.5 flex-shrink-0" />
-                    <h4 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100 leading-snug" data-testid={`insight-title-${index}`}>
+                    <Gauge size={16} className="text-indigo-500 dark:text-indigo-400 mt-1 flex-shrink-0" />
+                    <h4 className="text-base font-semibold text-[#111827] dark:text-neutral-100 leading-snug" data-testid={`insight-title-${index}`}>
                       {insight.title}
                     </h4>
                   </div>
@@ -70,21 +70,21 @@ export default function InsightCards({ insights }: InsightCardsProps) {
                 </div>
 
                 {/* Why It Matters */}
-                <p className="text-[15px] leading-relaxed text-neutral-700 dark:text-neutral-300" data-testid={`insight-why-${index}`}>
+                <p className="text-sm leading-relaxed text-[#6B7280] dark:text-neutral-300" data-testid={`insight-why-${index}`}>
                   {insight.why_it_matters}
                 </p>
 
                 {/* User Quote (Conditional) */}
                 {shouldShowQuote && (
-                  <blockquote className="border-l-2 border-neutral-200 dark:border-neutral-700 pl-3 italic text-neutral-600 dark:text-neutral-400" data-testid={`insight-quote-${index}`}>
+                  <blockquote className="border-l-2 border-gray-200 dark:border-neutral-700 pl-4 py-1 italic text-sm text-[#6B7280] dark:text-neutral-400" data-testid={`insight-quote-${index}`}>
                     "{insight.representative_quote}"
                   </blockquote>
                 )}
 
                 {/* Metrics Footer */}
-                <div className="flex flex-wrap justify-between gap-2 text-sm text-neutral-500 dark:text-neutral-400 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                <div className="flex flex-wrap justify-between gap-3 text-xs text-[#6B7280] dark:text-neutral-400 pt-4 border-t border-gray-100 dark:border-neutral-800">
                   <div className="flex items-center gap-1">
-                    <MessageSquare size={14} className="text-neutral-400" />
+                    <MessageSquare size={12} className="text-gray-400 dark:text-neutral-500" />
                     <span data-testid={`insight-mentions-${index}`}>{insight.metrics.mentions} mentions</span>
                   </div>
                   <span data-testid={`insight-negative-ratio-${index}`}>

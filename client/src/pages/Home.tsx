@@ -74,14 +74,14 @@ export default function Home() {
 
   // Show home page
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4 bg-[#F9FAFB] dark:bg-neutral-900">
       <div className="w-full max-w-2xl">
         <div className="flex flex-col items-center gap-8 text-center">
           <div>
-            <h1 className="text-5xl font-bold">
+            <h1 className="text-5xl font-bold text-[#111827] dark:text-neutral-100">
               AppScan
             </h1>
-            <p className="mt-4 text-xl text-muted-foreground">
+            <p className="mt-4 text-xl text-[#6B7280] dark:text-neutral-400">
               Get instant clarity on what users love and hate about your app
             </p>
           </div>

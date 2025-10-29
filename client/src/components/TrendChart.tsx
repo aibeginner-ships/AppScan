@@ -27,14 +27,14 @@ interface TrendChartProps {
 export default function TrendChart({ data }: TrendChartProps) {
   return (
     <div className="space-y-6">
-      <Card className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150">
-        <div className="flex items-center gap-3 mb-4">
+      <Card className="p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-neutral-700 bg-white dark:bg-neutral-800">
+        <div className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-100 dark:bg-indigo-950">
             <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Rating Trend</h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <h3 className="text-base font-semibold text-[#111827] dark:text-neutral-100">Rating Trend</h3>
+            <p className="text-sm text-[#6B7280] dark:text-neutral-400">
               Average rating over time
             </p>
           </div>
@@ -73,14 +73,14 @@ export default function TrendChart({ data }: TrendChartProps) {
         </div>
       </Card>
 
-      <Card className="p-6 rounded-2xl shadow-md hover:shadow-lg transition-all duration-150">
-        <div className="flex items-center gap-3 mb-4">
+      <Card className="p-8 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-100 dark:border-neutral-700 bg-white dark:bg-neutral-800">
+        <div className="flex items-center gap-3 mb-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-100 dark:bg-purple-950">
             <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-neutral-800 dark:text-neutral-100">Sentiment Trend</h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <h3 className="text-base font-semibold text-[#111827] dark:text-neutral-100">Sentiment Trend</h3>
+            <p className="text-sm text-[#6B7280] dark:text-neutral-400">
               Positive vs negative reviews by month
             </p>
           </div>

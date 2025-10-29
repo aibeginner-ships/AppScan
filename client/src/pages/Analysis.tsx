@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
@@ -15,31 +16,46 @@ interface AnalysisProps {
 }
 
 export default function Analysis({ data, onBack }: AnalysisProps) {
+  const insightsRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to insights section after initial render
+  useEffect(() => {
+    if (insightsRef.current && data.insights.length > 0) {
+      const timer = setTimeout(() => {
+        insightsRef.current?.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [data.insights.length]);
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-neutral-900 p-4 md:p-8">
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="mb-12">
+    <div className="min-h-screen bg-[#F9FAFB] dark:bg-neutral-900 p-4 md:p-8">
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-10">
           <Button
             variant="ghost"
             onClick={onBack}
-            className="mb-4"
+            className="mb-6"
             data-testid="button-back"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h2 className="text-3xl font-semibold text-neutral-800 dark:text-neutral-100" data-testid="text-app-name">
+          <h2 className="text-3xl font-semibold text-[#111827] dark:text-neutral-100" data-testid="text-app-name">
             Your app analysis
           </h2>
           <div className="mt-2 flex items-center gap-4">
-            <h3 className="text-xl text-neutral-600 dark:text-neutral-400">{data.appName}</h3>
+            <h3 className="text-xl text-[#6B7280] dark:text-neutral-400">{data.appName}</h3>
             <Badge variant="secondary" data-testid="badge-store">
               {data.store}
             </Badge>
           </div>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-10">
           <SummaryCards
             positiveCategories={data.positiveCategories}
             negativeCategories={data.negativeCategories}
@@ -58,7 +74,7 @@ export default function Analysis({ data, onBack }: AnalysisProps) {
             whatUsersHate={data.whatUsersHate}
           />
 
-          <div className="animate-fadeIn">
+          <div ref={insightsRef} className="animate-fadeIn scroll-mt-8">
             <InsightCards insights={data.insights} />
           </div>
 
