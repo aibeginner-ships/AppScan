@@ -1,8 +1,8 @@
-# AppScan v3.2 - App Review Summarizer with Modern SaaS Design
+# AppScan v3.3 - App Review Summarizer with Cal.com-Inspired SaaS Design
 
 ## Overview
 
-AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. **Version 3.2** introduces a modern, professional SaaS design refresh with Lucide icons, improved spacing, neutral color palette, and polished visual hierarchy inspired by Linear and Notion. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
+AppScan is a web application designed to analyze user reviews from Google Play Store and Apple App Store. It provides instant, AI-powered insights, including sentiment percentages, monthly trends, categorized feedback, rating analysis, and a list of top negative reviews. **Version 3.3** introduces a refined Cal.com/Loops.so-inspired design with subtle borders, softer shadows, generous whitespace, and a cohesive neutral color palette. The project aims to give users clear understanding of what customers appreciate and dislike about their applications.
 
 ## User Preferences
 
@@ -70,19 +70,31 @@ Sentiment is classified based on review scores: 4+ is Positive, 2- is Negative, 
 
 ### UI/UX Design
 
-**v3.2 introduces a modern, professional SaaS aesthetic:**
+**v3.3 introduces a refined Cal.com/Loops.so-inspired SaaS aesthetic:**
 
-- **Visual Design**: Clean, minimal interface inspired by Linear and Notion with professional Lucide icons throughout
-- **Typography**: Inter font at 15px with relaxed leading for improved readability
-- **Color Palette**: Neutral grays (gray-50, neutral-600/700/800) for text and backgrounds
-- **Spacing**: Generous padding (p-6) and rounded corners (rounded-2xl) for a modern feel
+- **Visual Design**: Ultra-clean minimal interface with subtle borders and generous whitespace
+- **Typography**: Refined hierarchy with text-base headings, text-sm body text for better scanning
+- **Color Palette**: 
+  - Background: #F9FAFB (soft gray)
+  - Cards: White (#FFFFFF) with border-gray-100
+  - Text: #111827 (primary headings), #6B7280 (secondary body text)
+- **Spacing**: Generous padding (p-8 on cards), space-y-10 between sections, max-w-6xl container
 - **Layout**: 2-column grid for insight cards on desktop, responsive single column on mobile
-- **Interactions**: Subtle hover effects (shadow-md → shadow-lg, slight lift), smooth transitions
-- **Animations**: Fade-in effects for insight cards (opacity + translateY)
+- **Interactions**: Subtle shadow transitions (shadow-sm → shadow-md on hover), no lift effects
+- **Animations**: Fade-in effects for insight cards, smooth auto-scroll to insights after analysis (800ms delay)
 - **Icons**: Professional Lucide icons (Gauge, BarChart3, TrendingUp, Star, etc.) in color-coded containers
-- **Components**: All cards use consistent rounded-2xl styling with shadow-md and hover:shadow-lg
+- **Components**: All cards use rounded-2xl, border-gray-100, shadow-sm with hover:shadow-md
+- **App Sentiment Snapshot**: Compact 4-metric grid (Avg Rating, Positive %, Negative %, Reviews)
 
-The design prioritizes clarity and information density with a data-first approach. Full dark mode support with neutral-900 backgrounds and adjusted contrast. Color-coded badges (green/yellow/grey for Impact, blue/amber/grey for Confidence) provide quick visual cues.
+**v3.3 Key Refinements**:
+- ✨ Softer, more professional shadows (shadow-sm default instead of shadow-md)
+- ✨ Consistent subtle borders (border-gray-100) on all cards
+- ✨ Increased padding and spacing for breathable layout
+- ✨ Refined typography sizes for cleaner information hierarchy
+- ✨ Auto-scroll to insights section after analysis completion
+- ✨ Compact dashboard-style App Sentiment Snapshot
+
+The design prioritizes clarity and breathing room with a Cal.com-inspired minimal approach. Full dark mode support with neutral-900 backgrounds and adjusted contrast. Color-coded badges (green/yellow/grey for Impact, blue/amber/grey for Confidence) provide quick visual cues.
 
 ## External Dependencies
 
